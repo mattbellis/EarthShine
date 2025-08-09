@@ -1,0 +1,5 @@
+/control/execute run.mac
+/vis/open OGL
+/vis/drawVolume
+/vis/scene/add/trajectories
+/vis/sceneHandler/attach
