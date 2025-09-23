@@ -173,7 +173,7 @@ def energy_loss(E0, particle, material, distance_cm=None):
 ################################################################################
 ##################################################################
 
-def generate_dm_decays(MASS_A=[.250,1,5], DM_MASSES=[10,100,1000], nevents_to_generate=10):
+def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_generate=10):
     # Loop over different values
 
     decays = {}
@@ -190,11 +190,11 @@ def generate_dm_decays(MASS_A=[.250,1,5], DM_MASSES=[10,100,1000], nevents_to_ge
     decays['pz_mu2'] = []
     decays['e_mu2'] = []
 
-    #MASS_A = [250,1000,5000]
+    #MASSES_A = [250,1000,5000]
     #MUON_MASS = 105.11
 
-    #MASS_A = [.250,1,5]
-    #DM_MASSES = [10,100,1000]
+    #MASSES_A = [.250,1,5]
+    #MASSES_DM = [10,100,1000]
 
     MUON_MASS = 0.10511
 
@@ -207,19 +207,19 @@ def generate_dm_decays(MASS_A=[.250,1,5], DM_MASSES=[10,100,1000], nevents_to_ge
 
     #pmags_GeV = [10,100,1000]
 
-    for MASS_A in MASS_A:
-      for pmag in DM_MASSES:
+    for MASSES_A in MASSES_A:
+      for pmag in MASSES_DM:
 
         #pmag = pmag_GeV*1000
 
-        print(MASS_A,pmag)
+        print(MASSES_A,pmag)
 
         # Here is the boost vectors to boost it to the moving frame of the dark photon, pmag
-        boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASS_A**2)])
+        boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
         boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
 
         print(f"Generating {nevents_to_generate} decays")
-        weights, particles = phasespace.nbody_decay(MASS_A,
+        weights, particles = phasespace.nbody_decay(MASSES_A,
                                                     [MUON_MASS, MUON_MASS]).generate(n_events=nevents_to_generate, boost_to=boost_vectors)
 
         print(f"Generated the decays")
@@ -229,9 +229,9 @@ def generate_dm_decays(MASS_A=[.250,1,5], DM_MASSES=[10,100,1000], nevents_to_ge
         p0 = particles['p_0'][:].numpy().T
         p1 = particles['p_1'][:].numpy().T
 
-        #data[MASS_A][pmag] = [p0.T, p1.T]
+        #data[MASSES_A][pmag] = [p0.T, p1.T]
         decays['M_DM'] += (pmag*np.ones(nevents_to_generate)).tolist()
-        decays['M_A'] += (MASS_A*np.ones(nevents_to_generate)).tolist()
+        decays['M_A'] += (MASSES_A*np.ones(nevents_to_generate)).tolist()
 
         #print(len(decays['M_A']))
 
