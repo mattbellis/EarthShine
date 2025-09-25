@@ -1,4 +1,4 @@
-# Earth_DM
+# EarthShine
 Sensitivity studies for detecting upward-traveling muons coming from dark matter annihilations in the Earth
 
 ## Installation
