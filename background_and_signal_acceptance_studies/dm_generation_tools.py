@@ -456,25 +456,3 @@ def throw_muons_at_CMS(df_input, ndecays=None, MAKE_PLOTS=False):
 
 '''
 
-
-##########################################################################
-def generate_origins_and_directions(nevents=100, width=10, depth=-10):
-    x = (width/2) - width*np.random.random(nevents)
-    y = (width/2) - width*np.random.random(nevents)
-    z = depth*np.ones(nevents)
-    origins = np.array([x,y,z]).T
-
-    # Generate betwen 0 and 1
-    theta = np.arccos(np.random.random(nevents))
-    phi = 2*np.pi*np.random.random(nevents)
-    r = 1000*width*np.ones(nevents)
-
-    px = r*np.sin(theta)*np.cos(phi)
-    py = r*np.sin(theta)*np.sin(phi)
-    pz = r*np.cos(theta)
-
-    directions = np.array([px, py, pz]).T
-
-    return origins, directions
-
-
