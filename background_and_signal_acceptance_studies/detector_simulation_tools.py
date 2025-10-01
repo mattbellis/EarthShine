@@ -224,16 +224,21 @@ def draw_points(point_a, point_b, ax=plt.gca(), color='r'):
 
 
 ##########################################################################
-def generate_origins_and_directions(nevents=100, width=10, depth=-7.5):
-    x = (width/2) - width*np.random.random(nevents)
-    y = (width/2) - width*np.random.random(nevents)
+def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5):
+    # Generate random origins in a circule
+    origin_phi = 2*np.pi*np.random.random(nevents)
+    origin_r = radius*np.sqrt(np.random.random(nevents))
+    x = origin_r*np.cos(origin_phi)
+    y = origin_r*np.sin(origin_phi)
     z = depth*np.ones(nevents)
     origins = np.array([x,y,z]).T
 
+    # Generate momenta 
     # Generate betwen 0 and 1
     theta = np.arccos(np.random.random(nevents))
     phi = 2*np.pi*np.random.random(nevents)
-    r = 1000*width*np.ones(nevents)
+    # Make sure the line is long enough to intersect the cylinder
+    r = 1000*radius*np.ones(nevents)
 
     px = r*np.sin(theta)*np.cos(phi)
     py = r*np.sin(theta)*np.sin(phi)
