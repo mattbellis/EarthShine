@@ -248,4 +248,55 @@ def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5):
 
     return origins, directions
 
+##########################################################################
+# Developed with ChatGPT to project vector onto endcap plane
+def projection_length_on_plane_from_points(p1, p2, normal=(1.0, 0.0, 0.0)):
+    """
+    Vectorized: magnitude of the projection(s) of segments p1->p2 onto the plane with given normal.
+
+    Parameters
+    ----------
+    p1, p2 : array-like, shape (..., 3)
+        Each row (or last-dimension triple) is a 3D point. p1 and p2 must be broadcastable.
+    normal : array-like, shape (3,)
+        Plane normal (need not be unit). The same normal is used for all rows.
+
+    Returns
+    -------
+    lengths : ndarray, shape (...,)
+        Magnitude(s) of the projected vector(s) onto the plane.
+    """
+    p1 = np.asarray(p1, dtype=float)
+    p2 = np.asarray(p2, dtype=float)
+    n = np.asarray(normal, dtype=float)
+    n = n / np.linalg.norm(n)  # normalize
+
+    v = p2 - p1                                    # (..., 3)
+    vmag = np.sqrt((v*v).sum(axis=1))
+
+    v_dot_n = np.sum(v * n, axis=-1, keepdims=True)  # (..., 1)
+    v_plane = v - v_dot_n * n                      # (..., 3)
+
+
+    return np.linalg.norm(v_plane, axis=-1), vmag       # (...,)
+
+def projection_length_on_cylinder_base(p1, p2):
+    """
+    Specialized for cylinder bases perpendicular to x-axis.
+    Equivalent to projecting onto any plane parallel to the end-caps.
+    """
+    p1 = np.asarray(p1, dtype=float)
+    p2 = np.asarray(p2, dtype=float)
+    dy = p2[..., 1] - p1[..., 1]
+    dz = p2[..., 2] - p1[..., 2]
+    return np.hypot(dy, dz)
+
+
+# Example
+#p1 = (-0.3, 0.2, -0.4)
+#p2 = ( 0.4, 0.6,  0.8)
+#print(projection_length_on_cylinder_base(p1, p2))                 # -> 1.264911064...
+#print(projection_length_on_plane_from_points(p1, p2))             # same result
+
+##########################################################################
 
