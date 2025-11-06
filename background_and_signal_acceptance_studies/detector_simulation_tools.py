@@ -224,7 +224,7 @@ def draw_points(point_a, point_b, ax=plt.gca(), color='r'):
 
 
 ##########################################################################
-def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5):
+def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model='floating'):
     # Generate random origins in a circule
     origin_phi = 2*np.pi*np.random.random(nevents)
     origin_r = radius*np.sqrt(np.random.random(nevents))
@@ -235,7 +235,13 @@ def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5):
 
     # Generate momenta 
     # Generate betwen 0 and 1
-    theta = np.arccos(np.random.random(nevents))
+    theta = None
+    if dm_model == 'floating':   
+        # Uniform in all directions
+        theta = np.arccos(np.random.random(nevents))
+    elif dm_model == 'core':
+        # Coming up from underground
+        theta = 0
     phi = 2*np.pi*np.random.random(nevents)
     # Make sure the line is long enough to intersect the cylinder
     r = 1000*radius*np.ones(nevents)
