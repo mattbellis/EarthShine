@@ -222,6 +222,29 @@ def draw_points(point_a, point_b, ax=plt.gca(), color='r'):
 
 ################################################################################
 
+##########################################################################
+def is_iterable(obj):
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
+##########################################################################
+
+##########################################################################
+def return_tag(var):
+    var_tag = ""
+    if type(var)==int or type(var)==float:
+        var_tag = f'{var}'
+    elif is_iterable(var):
+        if len(var)>1:
+            var_tag = f'{var[0]}-{var[-1]}'
+        else:
+            var_tag = f'{var[0]}'
+
+    return var_tag
+
+##########################################################################
 
 ##########################################################################
 def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model='floating'):
@@ -230,7 +253,15 @@ def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model
     origin_r = radius*np.sqrt(np.random.random(nevents))
     x = origin_r*np.cos(origin_phi)
     y = origin_r*np.sin(origin_phi)
-    z = depth*np.ones(nevents)
+    z = None
+    if type(depth)==int or type(depth)==float:
+        z = depth*np.ones(nevents)
+    elif is_iterable(depth):
+        width = depth[1] - depth[0]
+        z = depth[0] + (width*np.random.random(nevents))
+    else:
+        print(f"depth variable {depth} is not int,float, or iterable")
+        return 0
     origins = np.array([x,y,z]).T
 
     # Generate momenta 
@@ -241,7 +272,7 @@ def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model
         theta = np.arccos(np.random.random(nevents))
     elif dm_model == 'core':
         # Coming up from underground
-        theta = 0
+        theta = 0*np.ones(nevents)
     phi = 2*np.pi*np.random.random(nevents)
     # Make sure the line is long enough to intersect the cylinder
     r = 1000*radius*np.ones(nevents)

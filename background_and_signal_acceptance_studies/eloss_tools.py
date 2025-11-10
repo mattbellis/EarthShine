@@ -274,3 +274,30 @@ class RaggedSplineIndexLookup:
 
         return energy_idx_out, dist_idx_out
 
+##########################################################################
+# Does it in chunks
+def count_pairs(E_idx: np.ndarray, D_idx: np.ndarray):
+    """
+    Given two 1D arrays of the same length, return
+    - pairs: (k, 2) array of unique (E_idx, D_idx)
+    - counts: (k,) array of counts for each pair
+    """
+    E_idx = np.asarray(E_idx)
+    D_idx = np.asarray(D_idx)
+    assert E_idx.shape == D_idx.shape
+
+    # stack into (N, 2)
+    pairs = np.stack([E_idx, D_idx], axis=1)  # shape (N, 2)
+
+    # view as a single dtype so np.unique can work along axis=0
+    # make a structured view
+    dtype = np.dtype([('e', E_idx.dtype), ('d', D_idx.dtype)])
+    pairs_view = pairs.view(dtype)
+
+    uniq, counts = np.unique(pairs_view, return_counts=True)
+
+    # convert uniq back to a regular (k, 2) array
+    uniq_arr = np.column_stack([uniq['e'], uniq['d']])
+    return uniq_arr, counts
+
+##########################################################################
