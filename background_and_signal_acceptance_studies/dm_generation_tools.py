@@ -173,7 +173,7 @@ def energy_loss(E0, particle, material, distance_cm=None):
 ################################################################################
 ##################################################################
 
-def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_generate=10):
+def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_generate=10, dm_model='core'):
     # Loop over different values
 
     decays = {}
@@ -215,8 +215,34 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
         print(MASSES_A,pmag)
 
         # Here is the boost vectors to boost it to the moving frame of the dark photon, pmag
-        boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
-        boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
+        boost_vector, boost_vectors = None,None
+
+        if dm_model=='core':
+            # The core model has all the photons with their momentum in the z-direction
+            boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
+            boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
+        elif dm_model=='floating':
+            # In the floating model, the decay of the dark photon is uniform
+            # Generate in spherical coordinates
+            # Generate theta from 0 to 1. This should constrain them to pointing up
+            theta = np.arccos(np.random.random(nevents_to_generate))
+            phi = 2*np.pi*np.random.random(nevents_to_generate)
+            r = pmag*np.ones(nevents_to_generate)
+            E = np.sqrt(pmag**2 + MASSES_A**2)*np.ones(nevents_to_generate)
+            
+            # Convert to Cartesiaan for phasespace
+            px = r*np.sin(theta)*np.cos(phi)
+            py = r*np.sin(theta)*np.sin(phi)
+            pz = r*np.cos(theta)
+
+            boost_vectors = np.array([px, py, pz, E]).T
+
+            #boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
+            #boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
+        else:
+            print(f"Dark matter model '{dm_model}' has not been implemented!")
+            print("No events will be generated")
+            return None
 
         print(f"Generating {nevents_to_generate} decays")
         weights, particles = phasespace.nbody_decay(MASSES_A,
@@ -258,7 +284,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     e1 = dfdec1['e_mu1'].values
 
     pmag1 = mag([px1,py1,pz1])
-    theta1 = np.rad2deg(np.arccos(pz1/pmag1))
+    theta1 = np.arccos(pz1/pmag1)
     phi1 = np.arctan2(py1,pz1)
     print("Calculated pmag1, theta1, phi1")
 
@@ -272,7 +298,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     e2 = dfdec1['e_mu2'].values
 
     pmag2 = mag([px2,py2,pz2])
-    theta2 = np.rad2deg(np.arccos(pz2/pmag2))
+    theta2 = np.arccos(pz2/pmag2)
     phi2 = np.arctan2(py2,pz2)
     print("Calculated pmag2, theta2, phi2")
 
