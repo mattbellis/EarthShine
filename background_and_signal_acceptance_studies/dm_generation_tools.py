@@ -277,6 +277,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     # Generate a few other entries
     print("Generated all the events and now calculating a few new values!")
 
+
     # pmag, theta (degrees), phi
     px1 = dfdec1['px_mu1'].values
     py1 = dfdec1['py_mu1'].values
@@ -305,6 +306,9 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     dfdec1['pmag2'] = pmag2
     dfdec1['theta2'] = theta2
     dfdec1['phi2'] = phi2
+
+    dfdec1['costh1'] = np.cos(theta1)
+    dfdec1['costh2'] = np.cos(theta2)
 
     # Opening angle
     p4s = [[px1,py1,pz1,e1], [px2,py2,pz2,e2]]
