@@ -173,7 +173,8 @@ def energy_loss(E0, particle, material, distance_cm=None):
 ################################################################################
 ##################################################################
 
-def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_generate=10, dm_model='core'):
+def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_generate=10, dm_model='core', 
+                       verbose=False):
     # Loop over different values
 
     decays = {}
@@ -212,7 +213,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
         #pmag = pmag_GeV*1000
 
-        print(MASSES_A,pmag)
+        #print(f'M_A: {MASSES_A}   pmag: {pmag}')
 
         # Here is the boost vectors to boost it to the moving frame of the dark photon, pmag
         boost_vector, boost_vectors = None,None
@@ -244,13 +245,17 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
             print("No events will be generated")
             return None
 
-        print(f"Generating {nevents_to_generate} decays")
+        #if verbose:
+        print(f'M_A: {MASSES_A:5.3f}   pmag: {pmag:8.1f}     generating {nevents_to_generate:8d} decays')
+
         weights, particles = phasespace.nbody_decay(MASSES_A,
                                                     [MUON_MASS, MUON_MASS]).generate(n_events=nevents_to_generate, boost_to=boost_vectors)
 
-        print(f"Generated the decays")
+        if verbose:
+            print(f"Generated the decays")
 
-        print(f"Pulling out the values from the decays and filling our dataframe...")
+        if verbose:
+            print(f"Pulling out the values from the decays and filling our dataframe...")
 
         p0 = particles['p_0'][:].numpy().T
         p1 = particles['p_1'][:].numpy().T
@@ -270,12 +275,14 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
         decays['py_mu2'] += p1[1].tolist()
         decays['pz_mu2'] += p1[2].tolist()
         decays['e_mu2'] +=  p1[3].tolist()
-        print(f"Pulled out the values from the decays and filled our dataframe...")
+        if verbose:
+            print(f"Pulled out the values from the decays and filled our dataframe...")
 
     dfdec1 = pd.DataFrame.from_dict(decays)
 
     # Generate a few other entries
-    print("Generated all the events and now calculating a few new values!")
+    if verbose:
+        print("Generated all the events and now calculating a few new values!")
 
 
     # pmag, theta (degrees), phi
@@ -287,7 +294,8 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     pmag1 = mag([px1,py1,pz1])
     theta1 = np.arccos(pz1/pmag1)
     phi1 = np.arctan2(py1,pz1)
-    print("Calculated pmag1, theta1, phi1")
+    if verbose:
+        print("Calculated pmag1, theta1, phi1")
 
     dfdec1['pmag1'] = pmag1
     dfdec1['theta1'] = theta1
@@ -301,7 +309,8 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     pmag2 = mag([px2,py2,pz2])
     theta2 = np.arccos(pz2/pmag2)
     phi2 = np.arctan2(py2,pz2)
-    print("Calculated pmag2, theta2, phi2")
+    if verbose:
+        print("Calculated pmag2, theta2, phi2")
 
     dfdec1['pmag2'] = pmag2
     dfdec1['theta2'] = theta2
@@ -314,7 +323,8 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     p4s = [[px1,py1,pz1,e1], [px2,py2,pz2,e2]]
     thetas = np.rad2deg(opening_angle(p4s))
     dfdec1['opening angle'] = thetas
-    print("Calculated opening values")
+    if verbose:
+        print("Calculated opening values")
 
     #dfdec1.sample(5)
 
