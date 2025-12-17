@@ -234,7 +234,7 @@ def is_iterable(obj):
 ##########################################################################
 def return_tag(var):
     var_tag = ""
-    if type(var)==int or type(var)==float:
+    if type(var)==int or type(var)==float or type(var)==np.float64:
         var_tag = f'{var}'
     elif is_iterable(var):
         if len(var)>1:
@@ -254,13 +254,14 @@ def generate_origins(nevents=100, radius=10, depth=-7.5):
     x = origin_r*np.cos(origin_phi)
     y = origin_r*np.sin(origin_phi)
     z = None
-    if type(depth)==int or type(depth)==float:
+    if type(depth)==int or type(depth)==float or type(depth)==np.float64:
         z = depth*np.ones(nevents)
     elif is_iterable(depth):
         width = depth[1] - depth[0]
         z = depth[0] + (width*np.random.random(nevents))
     else:
         print(f"depth variable {depth} is not int,float, or iterable")
+        print(f'{depth} {type(depth)}')
         return 0
     origins = np.array([x,y,z]).T
 
