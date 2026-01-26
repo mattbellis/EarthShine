@@ -222,20 +222,103 @@ def draw_points(point_a, point_b, ax=plt.gca(), color='r'):
 
 ################################################################################
 
+##########################################################################
+def is_iterable(obj):
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
+##########################################################################
 
 ##########################################################################
-def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5):
+def return_tag(var):
+    var_tag = ""
+    if type(var)==int or type(var)==float or type(var)==np.float64:
+        var_tag = f'{var}'
+    elif is_iterable(var):
+        if len(var)>1:
+            var_tag = f'{var[0]}-{var[-1]}'
+        else:
+            var_tag = f'{var[0]}'
+
+    return var_tag
+
+##########################################################################
+
+##########################################################################
+def generate_origins(nevents=100, radius=10, depth=-7.5):
     # Generate random origins in a circule
     origin_phi = 2*np.pi*np.random.random(nevents)
     origin_r = radius*np.sqrt(np.random.random(nevents))
     x = origin_r*np.cos(origin_phi)
     y = origin_r*np.sin(origin_phi)
-    z = depth*np.ones(nevents)
+    z = None
+    if type(depth)==int or type(depth)==float or type(depth)==np.float64:
+        z = depth*np.ones(nevents)
+    elif is_iterable(depth):
+        width = depth[1] - depth[0]
+        z = depth[0] + (width*np.random.random(nevents))
+    else:
+        print(f"depth variable {depth} is not int,float, or iterable")
+        print(f'{depth} {type(depth)}')
+        return 0
+    origins = np.array([x,y,z]).T
+
+    return origins
+
+##########################################################################
+# Extract the momenta and calculate unit vectors for the directions
+# of travel of the muons:wq
+##########################################################################
+def directions_from_momentum(df_decays):
+
+    directions = []
+    for i in [1,2]:
+        px = df_decays[f'px_mu{i}']
+        py = df_decays[f'py_mu{i}']
+        pz = df_decays[f'pz_mu{i}']
+
+        pmag = np.sqrt(px*px + py*py + pz*pz)
+
+        px /= pmag
+        py /= pmag
+        pz /= pmag
+
+        directions.append(np.array([px, py, pz]).T)
+
+    return directions
+##########################################################################
+
+
+##########################################################################
+##########################################################################
+def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model='floating'):
+    # Generate random origins in a circule
+    origin_phi = 2*np.pi*np.random.random(nevents)
+    origin_r = radius*np.sqrt(np.random.random(nevents))
+    x = origin_r*np.cos(origin_phi)
+    y = origin_r*np.sin(origin_phi)
+    z = None
+    if type(depth)==int or type(depth)==float:
+        z = depth*np.ones(nevents)
+    elif is_iterable(depth):
+        width = depth[1] - depth[0]
+        z = depth[0] + (width*np.random.random(nevents))
+    else:
+        print(f"depth variable {depth} is not int,float, or iterable")
+        return 0
     origins = np.array([x,y,z]).T
 
     # Generate momenta 
     # Generate betwen 0 and 1
-    theta = np.arccos(np.random.random(nevents))
+    theta = None
+    if dm_model == 'floating':   
+        # Uniform in all directions
+        theta = np.arccos(np.random.random(nevents))
+    elif dm_model == 'core':
+        # Coming up from underground
+        theta = 0*np.ones(nevents)
     phi = 2*np.pi*np.random.random(nevents)
     # Make sure the line is long enough to intersect the cylinder
     r = 1000*radius*np.ones(nevents)
