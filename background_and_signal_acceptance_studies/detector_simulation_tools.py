@@ -8,6 +8,264 @@ from skspatial.plotting import plot_3d
 from skspatial.objects import Line, Cylinder, Point, Points
 from skspatial.plotting import plot_3d
 
+
+
+##########################################################################
+# CMS coordinate transformations
+#
+# From Claude
+##########################################################################
+import numpy as np
+
+################################################################################
+def cartesian_to_cms(px: np.ndarray, py: np.ndarray, pz: np.ndarray) -> dict:
+    """
+    Convert Cartesian momentum (px, py, pz) to CMS coordinates (pt, theta, phi, eta).
+
+    CMS coordinate conventions:
+    - z-axis: beam direction
+    - x-axis: horizontal, pointing to center of LHC
+    - y-axis: vertical, pointing up
+    - theta: polar angle from +z axis [0, pi]
+    - phi: azimuthal angle in x-y plane from +x axis [-pi, +pi]
+    - eta: pseudorapidity = -ln(tan(theta/2))
+    - pt: transverse momentum = sqrt(px^2 + py^2)
+
+    Parameters
+    ----------
+    px, py, pz : array-like
+        Cartesian momentum components (can be scalars or arrays)
+
+    Returns
+    -------
+    dict with keys:
+        'pt': transverse momentum
+        'theta': polar angle in radians [0, pi]
+        'phi': azimuthal angle in radians [-pi, pi]
+        'eta': pseudorapidity
+        'p': total momentum magnitude
+    """
+    px = np.atleast_1d(np.asarray(px, dtype=float))
+    py = np.atleast_1d(np.asarray(py, dtype=float))
+    pz = np.atleast_1d(np.asarray(pz, dtype=float))
+
+    # Transverse momentum
+    pt = np.sqrt(px**2 + py**2)
+
+    # Total momentum
+    p = np.sqrt(px**2 + py**2 + pz**2)
+
+    # Azimuthal angle phi: angle in x-y plane from x-axis
+    # atan2 returns values in [-pi, pi]
+    phi = np.arctan2(py, px)
+
+    # Polar angle theta: angle from z-axis
+    # theta = arctan(pt / pz), but we use arctan2 for proper quadrant handling
+    # For a particle along +z: theta = 0
+    # For a particle along -z: theta = pi
+    # For a particle in the transverse plane: theta = pi/2
+    theta = np.arctan2(pt, pz)  # This gives [0, pi] range as desired
+
+    # Pseudorapidity eta = -ln(tan(theta/2))
+    # Equivalent formula that's numerically more stable:
+    # eta = arctanh(pz/p) = 0.5 * ln((p + pz)/(p - pz))
+    # Or: eta = -ln(tan(theta/2))
+
+    # Handle edge cases where pt = 0 (particle along beam axis)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        # Use the stable formula: eta = arctanh(cos(theta)) = arctanh(pz/p)
+        # But arctanh diverges at ±1, so we use the log formula with protection
+        eta = np.where(
+            pt > 1e-10,
+            -np.log(np.tan(theta / 2)),
+            np.sign(pz) * np.inf  # eta -> ±inf along beam axis
+        )
+
+        # Alternative stable computation using momentum components directly
+        # eta = 0.5 * np.log((p + pz) / (p - pz))  # Same result
+
+    #return {
+        #'pt': pt,
+        #'theta': theta,
+        #'phi': phi,
+        #'eta': eta,
+        #'p': p
+    #}
+    return p, pt, eta, phi, theta
+
+################################################################################
+
+def cms_to_cartesian(
+    pt: np.ndarray = None,
+    phi: np.ndarray = None,
+    eta: np.ndarray = None,
+    theta: np.ndarray = None,
+    p: np.ndarray = None
+) -> dict:
+    """
+    Convert CMS coordinates to Cartesian (px, py, pz).
+
+    Two input modes:
+    1. (pt, phi, eta) or (pt, phi, theta) - transverse momentum + angles
+    2. (p, phi, theta) - total momentum + angles
+
+    Parameters
+    ----------
+    pt : array-like, optional
+        Transverse momentum (use with phi and eta/theta)
+    phi : array-like
+        Azimuthal angle in radians [-pi, pi] (required)
+    eta : array-like, optional
+        Pseudorapidity (use with pt)
+    theta : array-like, optional
+        Polar angle in radians [0, pi]
+    p : array-like, optional
+        Total momentum magnitude (use with phi and theta)
+
+    Returns
+    -------
+    dict with keys:
+        'px': x-component of momentum
+        'py': y-component of momentum
+        'pz': z-component of momentum
+        'p': total momentum magnitude
+        'pt': transverse momentum
+        'theta': polar angle
+        'eta': pseudorapidity
+    """
+    # Validate inputs
+    if phi is None:
+        raise ValueError("'phi' is required")
+
+    phi = np.atleast_1d(np.asarray(phi, dtype=float))
+
+    # Mode 1: (p, phi, theta) - total momentum with angles
+    if p is not None:
+        if theta is None:
+            raise ValueError("When using 'p', must also provide 'theta'")
+        if pt is not None:
+            raise ValueError("Provide either 'pt' or 'p', not both")
+        if eta is not None:
+            raise ValueError("When using 'p', use 'theta' not 'eta'")
+
+        p = np.atleast_1d(np.asarray(p, dtype=float))
+        theta = np.atleast_1d(np.asarray(theta, dtype=float))
+
+        # Standard spherical to Cartesian
+        px = p * np.sin(theta) * np.cos(phi)
+        py = p * np.sin(theta) * np.sin(phi)
+        pz = p * np.cos(theta)
+        pt = p * np.sin(theta)
+
+        # Compute eta from theta
+        with np.errstate(divide='ignore', invalid='ignore'):
+            eta = np.where(
+                np.abs(np.sin(theta)) > 1e-10,
+                -np.log(np.tan(theta / 2)),
+                np.sign(np.cos(theta)) * np.inf
+            )
+
+    # Mode 2: (pt, phi, eta/theta) - transverse momentum with angles
+    elif pt is not None:
+        if (eta is None) == (theta is None):
+            raise ValueError("When using 'pt', must provide exactly one of 'eta' or 'theta'")
+
+        pt = np.atleast_1d(np.asarray(pt, dtype=float))
+
+        if eta is not None:
+            eta = np.atleast_1d(np.asarray(eta, dtype=float))
+            # Convert eta to theta: theta = 2 * arctan(exp(-eta))
+            theta = 2 * np.arctan(np.exp(-eta))
+        else:
+            theta = np.atleast_1d(np.asarray(theta, dtype=float))
+            # Convert theta to eta
+            with np.errstate(divide='ignore', invalid='ignore'):
+                eta = np.where(
+                    np.abs(np.sin(theta)) > 1e-10,
+                    -np.log(np.tan(theta / 2)),
+                    np.sign(np.cos(theta)) * np.inf
+                )
+
+        # Cartesian components
+        px = pt * np.cos(phi)
+        py = pt * np.sin(phi)
+
+        # z-component: pz = pt / tan(theta) = pt * cot(theta)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            pz = np.where(
+                np.abs(np.sin(theta)) > 1e-10,
+                pt / np.tan(theta),
+                np.sign(np.cos(theta)) * np.inf
+            )
+
+        # Total momentum
+        p = np.sqrt(px**2 + py**2 + pz**2)
+
+    else:
+        raise ValueError("Must provide either 'pt' or 'p'")
+
+    #return {
+        #'px': px,
+        #'py': py,
+        #'pz': pz,
+        #'p': p,
+        #'pt': pt,
+        #'theta': theta,
+        #'eta': eta
+    #}
+
+    return px, py, pz, p, pt, theta, eta
+
+
+################################################################################
+# Convenience wrappers for vector inputs
+def xyz_to_cms(momentum_xyz: np.ndarray) -> dict:
+    """
+    Convert momentum vectors from Cartesian to CMS coordinates.
+
+    Parameters
+    ----------
+    momentum_xyz : ndarray of shape (N, 3) or (3,)
+        Momentum vectors as [px, py, pz]
+
+    Returns
+    -------
+    dict with 'pt', 'theta', 'phi', 'eta', 'p' arrays
+    """
+    momentum_xyz = np.atleast_2d(momentum_xyz)
+    return cartesian_to_cms(
+        momentum_xyz[:, 0],
+        momentum_xyz[:, 1],
+        momentum_xyz[:, 2]
+    )
+
+
+################################################################################
+
+def cms_to_xyz(pt: np.ndarray, phi: np.ndarray,
+               eta: np.ndarray = None, theta: np.ndarray = None) -> np.ndarray:
+    """
+    Convert CMS coordinates to momentum vectors in Cartesian coordinates.
+
+    Parameters
+    ----------
+    pt : array-like
+        Transverse momentum
+    phi : array-like
+        Azimuthal angle in radians
+    eta : array-like, optional
+        Pseudorapidity (provide this OR theta)
+    theta : array-like, optional
+        Polar angle in radians (provide this OR eta)
+
+    Returns
+    -------
+    ndarray of shape (N, 3)
+        Momentum vectors as [px, py, pz]
+    """
+    result = cms_to_cartesian(pt, phi, eta=eta, theta=theta)
+    return np.column_stack([result['px'], result['py'], result['pz']])
+
 ##########################################################################
 def mag(p3):
   #print(p3)
@@ -162,7 +420,7 @@ def intersect_finite_cylinder_x_np(origins, directions,
     ok0 = real & (x0 >= -half_len) & (x0 <= half_len)
     ok1 = real & (x1 >= -half_len) & (x1 <= half_len)
 
-     --- cap intersections ---
+    # --- cap intersections ---
     # avoid division by zero
     nonpara = np.abs(Dx) > eps
     t_cap_pos = np.where(nonpara, ( half_len - Ox)/Dx, np.nan)
@@ -276,9 +534,9 @@ def directions_from_momentum(df_decays):
 
     directions = []
     for i in [1,2]:
-        px = df_decays[f'px_mu{i}']
-        py = df_decays[f'py_mu{i}']
-        pz = df_decays[f'pz_mu{i}']
+        px = df_decays[f'px{i}']
+        py = df_decays[f'py{i}']
+        pz = df_decays[f'pz{i}']
 
         pmag = np.sqrt(px*px + py*py + pz*pz)
 
@@ -384,3 +642,263 @@ def projection_length_on_cylinder_base(p1, p2):
 
 ##########################################################################
 
+
+################################################################################
+# Claude
+################################################################################
+
+################################################################################
+
+
+################################################################################
+
+def visualize_ray_cylinder_intersections(
+    origins: np.ndarray,
+    directions: np.ndarray,
+    entry_points: np.ndarray,
+    exit_points: np.ndarray,
+    radius: float,
+    half_length: float,
+    ax: plt.Axes = None,
+    cylinder_alpha: float = 0.2,
+    cylinder_color: str = 'cyan',
+    ray_colors: list = None,
+    figsize: tuple = (12, 10),
+    extend_factor: float = 1.5,
+) -> plt.Axes:
+    """
+    Visualize rays intersecting a cylinder.
+
+    Parameters
+    ----------
+    origins : ndarray of shape (N, 3)
+        Starting points of the rays
+    directions : ndarray of shape (N, 3)
+        Direction vectors of the rays
+    entry_points : ndarray of shape (N, 3)
+        Entry points into the cylinder (can contain NaN for misses)
+    exit_points : ndarray of shape (N, 3)
+        Exit points from the cylinder (can contain NaN for misses)
+    radius : float
+        Radius of the cylinder
+    half_length : float
+        Half-length of the cylinder
+    ax : matplotlib 3D axes, optional
+        Existing axes to plot on. If None, creates new figure.
+    cylinder_alpha : float
+        Transparency of the cylinder surface
+    cylinder_color : str
+        Color of the cylinder
+    ray_colors : list, optional
+        List of colors for each ray. If None, uses a colormap.
+    figsize : tuple
+        Figure size if creating new figure
+    extend_factor : float
+        How far to extend the dashed ray line beyond the cylinder
+
+    Returns
+    -------
+    ax : matplotlib 3D axes
+    """
+    origins = np.atleast_2d(origins)
+    directions = np.atleast_2d(directions)
+    entry_points = np.atleast_2d(entry_points)
+    exit_points = np.atleast_2d(exit_points)
+
+    N = origins.shape[0]
+
+    if ax is None:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111, projection='3d')
+
+    # Generate ray colors if not provided
+    if ray_colors is None:
+        cmap = plt.cm.tab10
+        ray_colors = [cmap(i % 10) for i in range(N)]
+
+    # --- Draw the cylinder ---
+    # Curved surface
+    theta = np.linspace(0, 2 * np.pi, 50)
+    z_cyl = np.linspace(-half_length, half_length, 30)
+    theta_grid, z_grid = np.meshgrid(theta, z_cyl)
+    x_cyl = radius * np.cos(theta_grid)
+    y_cyl = radius * np.sin(theta_grid)
+
+    ax.plot_surface(x_cyl, y_cyl, z_grid, alpha=cylinder_alpha,
+                    color=cylinder_color, edgecolor='none')
+
+    # End caps
+    r_cap = np.linspace(0, radius, 15)
+    theta_cap = np.linspace(0, 2 * np.pi, 50)
+    r_cap_grid, theta_cap_grid = np.meshgrid(r_cap, theta_cap)
+    x_cap = r_cap_grid * np.cos(theta_cap_grid)
+    y_cap = r_cap_grid * np.sin(theta_cap_grid)
+
+    # Top cap
+    z_top = np.full_like(x_cap, half_length)
+    ax.plot_surface(x_cap, y_cap, z_top, alpha=cylinder_alpha,
+                    color=cylinder_color, edgecolor='none')
+
+    # Bottom cap
+    z_bottom = np.full_like(x_cap, -half_length)
+    ax.plot_surface(x_cap, y_cap, z_bottom, alpha=cylinder_alpha,
+                    color=cylinder_color, edgecolor='none')
+
+    # Draw cylinder wireframe edges for clarity
+    theta_wire = np.linspace(0, 2 * np.pi, 50)
+    ax.plot(radius * np.cos(theta_wire), radius * np.sin(theta_wire),
+            np.full_like(theta_wire, half_length), 'k-', alpha=0.3, linewidth=0.5)
+    ax.plot(radius * np.cos(theta_wire), radius * np.sin(theta_wire),
+            np.full_like(theta_wire, -half_length), 'k-', alpha=0.3, linewidth=0.5)
+
+    # --- Draw each ray ---
+    for i in range(N):
+        color = ray_colors[i]
+        origin = origins[i]
+        direction = directions[i]
+        entry = entry_points[i]
+        exit_pt = exit_points[i]
+
+        # Check if this ray hit the cylinder
+        hit = not np.any(np.isnan(entry))
+
+        # Draw origin point
+        ax.scatter(*origin, color=color, s=100, marker='o',
+                   edgecolors='black', linewidths=1, label=f'Ray {i+1} origin' if i < 5 else None)
+
+        if hit:
+            # Draw entry and exit points
+            ax.scatter(*entry, color=color, s=50, marker='o',
+                       edgecolors='black', linewidths=1.5, zorder=5)
+            ax.scatter(*exit_pt, color=color, s=50, marker='o',
+                       edgecolors='black', linewidths=1.5, zorder=5)
+
+            # Draw solid line through cylinder (entry to exit)
+            ax.plot([entry[0], exit_pt[0]],
+                    [entry[1], exit_pt[1]],
+                    [entry[2], exit_pt[2]],
+                    color=color, linewidth=2.5, solid_capstyle='round')
+
+            # Calculate how far to extend the dashed line
+            dir_norm = direction / np.linalg.norm(direction)
+
+            # Dashed line from origin to entry
+            ax.plot([origin[0], entry[0]],
+                    [origin[1], entry[1]],
+                    [origin[2], entry[2]],
+                    color=color, linewidth=1.5, linestyle='--', alpha=0.7)
+
+            # Dashed line extending beyond exit
+            extend_dist = extend_factor * np.linalg.norm(exit_pt - entry)
+            end_point = exit_pt + dir_norm * extend_dist
+            ax.plot([exit_pt[0], end_point[0]],
+                    [exit_pt[1], end_point[1]],
+                    [exit_pt[2], end_point[2]],
+                    color=color, linewidth=1.5, linestyle='--', alpha=0.7)
+        else:
+            # Ray missed - draw extended dashed line
+            dir_norm = direction / np.linalg.norm(direction)
+            extend_dist = 4 * half_length  # Extend far enough to show it misses
+            end_point = origin + dir_norm * extend_dist
+            ax.plot([origin[0], end_point[0]],
+                    [origin[1], end_point[1]],
+                    [origin[2], end_point[2]],
+                    color=color, linewidth=1.5, linestyle=':', alpha=0.5)
+
+    # --- Set labels and adjust view ---
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    # Set equal aspect ratio
+    max_range = max(radius, half_length) * 1.5
+
+    # Include origins in the range calculation
+    all_points = [origins]
+    if not np.all(np.isnan(entry_points)):
+        all_points.append(entry_points[~np.isnan(entry_points).any(axis=1)])
+    if not np.all(np.isnan(exit_points)):
+        all_points.append(exit_points[~np.isnan(exit_points).any(axis=1)])
+
+    all_points = np.vstack(all_points)
+
+    x_range = [min(all_points[:, 0].min(), -radius) - 2,
+               max(all_points[:, 0].max(), radius) + 2]
+    y_range = [min(all_points[:, 1].min(), -radius) - 2,
+               max(all_points[:, 1].max(), radius) + 2]
+    z_range = [min(all_points[:, 2].min(), -half_length) - 2,
+               max(all_points[:, 2].max(), half_length) + 2]
+
+    ax.set_xlim(x_range)
+    ax.set_ylim(y_range)
+    ax.set_zlim(z_range)
+
+    # Try to set equal aspect ratio (works in newer matplotlib)
+    try:
+        ax.set_aspect('equal')
+    except NotImplementedError:
+        pass
+
+    ax.set_title('Muon Trajectories through CMS Detector')
+
+    return ax
+
+################################################################################
+
+################################################################################
+
+def demo_visualization():
+    """Run a demonstration of the ray-cylinder intersection and visualization."""
+
+    # CMS-like dimensions (in meters)
+    cms_radius = 7.0
+    cms_half_length = 10.5
+
+    # Create test muons coming from underground (negative y)
+    np.random.seed(42)
+
+    origins = np.array([
+        [0, -20, 0],           # Directly below center
+        [3, -18, 5],           # Off-center
+        [-2, -22, -3],         # Another off-center
+        [8, -15, 0],           # Near edge
+        [20, -20, 0],          # Will miss (too far in x)
+        [0, -25, 15],          # Will miss (too far in z)
+    ])
+
+    # Direction vectors (roughly pointing upward with some spread)
+    directions = np.array([
+        [0, 1, 0],             # Straight up
+        [-0.1, 1, -0.2],       # Slight angle
+        [0.15, 1, 0.1],        # Slight angle
+        [-0.3, 1, 0],          # Angled toward center
+        [0, 1, 0],             # Straight up (but will miss)
+        [0, 1, -0.3],          # Angled (but will miss)
+    ])
+
+    # Compute intersections
+    entry_points, exit_points = ray_cylinder_intersection(
+        origins, directions, cms_radius, cms_half_length
+    )
+
+    print("Entry points:")
+    print(entry_points)
+    print("\nExit points:")
+    print(exit_points)
+
+    # Visualize
+    ax = visualize_ray_cylinder_intersections(
+        origins, directions, entry_points, exit_points,
+        cms_radius, cms_half_length
+    )
+    ax.view_init(vertical_axis='y')
+    ax.set_xlim(-20,20)
+    ax.set_ylim(-20,20)
+    ax.set_zlim(-20,20)
+
+    plt.tight_layout()
+    plt.show()
+
+    return ax
+
+################################################################################

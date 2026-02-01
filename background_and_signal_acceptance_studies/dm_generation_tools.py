@@ -10,6 +10,8 @@ from skspatial.plotting import plot_3d
 from skspatial.objects import Line, Cylinder, Point
 from skspatial.plotting import plot_3d
 
+import detector_simulation_tools as dst
+
 import phasespace
 
 import tensorflow
@@ -17,46 +19,6 @@ import tensorflow
 import pickle
 
 ################################################################################
-def mag(p3):
-  #print(p3)
-  p = np.sqrt(p3[0]*p3[0] + p3[1]*p3[1] + p3[2]*p3[2])
-  #if p<5000:
-  #  print(p3,p)
-  return p
-
-def invmass(p4s):
-  E,px,py,pz = 0,0,0,0
-
-  for p4 in p4s:
-    E += p4[3]
-    px += p4[0]
-    py += p4[1]
-    pz += p4[2]
-
-  m2 = E**2 - (px**2 + py**2 + pz**2)
-  if m2>=0:
-    return np.sqrt(m2)
-  else:
-    return -np.sqrt(-m2)
-
-def invmass_cols(p4):
-
-  E = p4[3]
-  px = p4[0]
-  py = p4[1]
-  pz = p4[2]
-
-  m2 = E**2 - (px**2 + py**2 + pz**2)
-  m = -999*np.ones(len(E))
-  mask = m2>=0
-  #print(mask[mask])
-  #print(mask[~mask])
-
-  m[mask] = np.sqrt(m2[mask])
-  m[~mask] = -np.sqrt(-m2[~mask])
-
-  return m
-
 
 def opening_angle(p4s):
   p0mag = np.sqrt(p4s[0][0]**2 + p4s[0][1]**2 + p4s[0][2]**2)
@@ -76,6 +38,8 @@ def distance(v1, v2):
 
   d = np.sqrt(dx**2 + dy**2 + dz**2)
   return d
+
+################################################################################
 
 ################################################################################
 import numpy as np
@@ -181,15 +145,15 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     decays['M_DM'] = []
     decays['M_A'] = []
 
-    decays['px_mu1'] = []
-    decays['py_mu1'] = []
-    decays['pz_mu1'] = []
-    decays['e_mu1'] = []
+    decays['px1'] = []
+    decays['py1'] = []
+    decays['pz1'] = []
+    decays['e1'] = []
 
-    decays['px_mu2'] = []
-    decays['py_mu2'] = []
-    decays['pz_mu2'] = []
-    decays['e_mu2'] = []
+    decays['px2'] = []
+    decays['py2'] = []
+    decays['pz2'] = []
+    decays['e2'] = []
 
     #MASSES_A = [250,1000,5000]
     #MUON_MASS = 105.11
@@ -220,23 +184,51 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
         if dm_model=='core':
             # The core model has all the photons with their momentum in the z-direction
-            boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
+            # Old
+            #boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
+            # Shifted CMS defintion so that 7 is up and z is along beamline
+            boost_vector = np.array([0, pmag, 0, np.sqrt(pmag**2 + MASSES_A**2)])
             boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
+
         elif dm_model=='floating':
             # In the floating model, the decay of the dark photon is uniform
             # Generate in spherical coordinates
             # Generate theta from 0 to 1. This should constrain them to pointing up
-            theta = np.arccos(np.random.random(nevents_to_generate))
-            phi = 2*np.pi*np.random.random(nevents_to_generate)
-            r = pmag*np.ones(nevents_to_generate)
+            #theta = np.arccos(np.random.random(nevents_to_generate))
+            #phi = np.pi*np.random.random(nevents_to_generate)# + np.pi # From pi to 2*pi
+            #r = pmag*np.ones(nevents_to_generate)
+            
+            # Claude
+            cos_alpha = np.random.random(nevents_to_generate)#rng.uniform(0, 1, size=n)  # cos(alpha) in [0, 1] -> alpha in [0, pi/2]
+            alpha = np.arccos(cos_alpha)           # angle from +y axis
+            #beta = rng.uniform(0, 2 * np.pi, size=n)  # rotation around y-axis
+            beta = 2*np.pi*np.random.random(nevents_to_generate)
+
+            # Unit direction vector
+            px_unit = np.sin(alpha) * np.cos(beta)
+            py_unit = cos_alpha  # = cos(alpha), always positive
+            pz_unit = np.sin(alpha) * np.sin(beta)
+
+            # Scale by momentum magnitude
+            px = pmag * px_unit
+            py = pmag * py_unit
+            pz = pmag * pz_unit
+
+
             E = np.sqrt(pmag**2 + MASSES_A**2)*np.ones(nevents_to_generate)
             
             # Convert to Cartesiaan for phasespace
-            px = r*np.sin(theta)*np.cos(phi)
-            py = r*np.sin(theta)*np.sin(phi)
-            pz = r*np.cos(theta)
+            #px = r*np.sin(theta)*np.cos(phi)
+            #py = r*np.sin(theta)*np.sin(phi)
+            #pz = r*np.cos(theta)
+            #print(r)
+            #print(E)
+            #px, py, pz, p, pt, theta, eta = dst.cms_to_cartesian(p=r, phi=phi, theta=theta)
 
             boost_vectors = np.array([px, py, pz, E]).T
+            # Switching this so that y is up
+            #boost_vectors = np.array([px, py, py, E]).T
+            #print(boost_vectors)
 
             #boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
             #boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
@@ -266,15 +258,15 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
         #print(len(decays['M_A']))
 
-        decays['px_mu1'] += p0[0].tolist()
-        decays['py_mu1'] += p0[1].tolist()
-        decays['pz_mu1'] += p0[2].tolist()
-        decays['e_mu1'] +=  p0[3].tolist()
+        decays['px1'] += p0[0].tolist()
+        decays['py1'] += p0[1].tolist()
+        decays['pz1'] += p0[2].tolist()
+        decays['e1'] +=  p0[3].tolist()
 
-        decays['px_mu2'] += p1[0].tolist()
-        decays['py_mu2'] += p1[1].tolist()
-        decays['pz_mu2'] += p1[2].tolist()
-        decays['e_mu2'] +=  p1[3].tolist()
+        decays['px2'] += p1[0].tolist()
+        decays['py2'] += p1[1].tolist()
+        decays['pz2'] += p1[2].tolist()
+        decays['e2'] +=  p1[3].tolist()
         if verbose:
             print(f"Pulled out the values from the decays and filled our dataframe...")
 
@@ -286,38 +278,54 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
 
     # pmag, theta (degrees), phi
-    px1 = dfdec1['px_mu1'].values
-    py1 = dfdec1['py_mu1'].values
-    pz1 = dfdec1['pz_mu1'].values
-    e1 = dfdec1['e_mu1'].values
+    px1 = dfdec1['px1'].values
+    py1 = dfdec1['py1'].values
+    pz1 = dfdec1['pz1'].values
+    e1 = dfdec1['e1'].values
 
-    pmag1 = mag([px1,py1,pz1])
-    theta1 = np.arccos(pz1/pmag1)
-    phi1 = np.arctan2(py1,pz1)
+    # This should still work for CMS coordinates
+    #pt1 = np.sqrt(px1*px1 + py1*py1)
+    #pmag1 = mag([px1,py1,pz1])
+    #theta1 = np.atan2(pt1/pz1)
+    #phi1 = np.arctan2(py1,px1)
+    p, pt, eta, phi, theta = dst.cartesian_to_cms(px1, py1, pz1)
+
     if verbose:
         print("Calculated pmag1, theta1, phi1")
 
-    dfdec1['pmag1'] = pmag1
-    dfdec1['theta1'] = theta1
-    dfdec1['phi1'] = phi1
+    dfdec1['pmag1'] = p
+    dfdec1['pt1'] = pt
+    dfdec1['eta1'] = eta
+    dfdec1['theta1'] = theta
+    dfdec1['phi1'] = phi
 
-    px2 = dfdec1['px_mu2'].values
-    py2 = dfdec1['py_mu2'].values
-    pz2 = dfdec1['pz_mu2'].values
-    e2 = dfdec1['e_mu2'].values
+    px2 = dfdec1['px2'].values
+    py2 = dfdec1['py2'].values
+    pz2 = dfdec1['pz2'].values
+    e2 = dfdec1['e2'].values
 
-    pmag2 = mag([px2,py2,pz2])
-    theta2 = np.arccos(pz2/pmag2)
-    phi2 = np.arctan2(py2,pz2)
+    p, pt, eta, phi, theta = dst.cartesian_to_cms(px2, py2, pz2)
+
+    #pt2 = np.sqrt(px1*px1 + py1*py1)
+    #pmag2 = mag([px2,py2,pz2])
+    #theta2 = np.atan2(pt2/pz2)
+    #phi2 = np.arctan2(py2,px2)
+
     if verbose:
         print("Calculated pmag2, theta2, phi2")
 
-    dfdec1['pmag2'] = pmag2
-    dfdec1['theta2'] = theta2
-    dfdec1['phi2'] = phi2
+    #dfdec1['pmag2'] = pmag2
+    #dfdec1['theta2'] = theta2
+    #dfdec1['phi2'] = phi2
 
-    dfdec1['costh1'] = np.cos(theta1)
-    dfdec1['costh2'] = np.cos(theta2)
+    dfdec1['pmag2'] = p
+    dfdec1['pt2'] = pt
+    dfdec1['eta2'] = eta
+    dfdec1['theta2'] = theta
+    dfdec1['phi2'] = phi
+
+    dfdec1['costh1'] = np.cos(dfdec1['theta1'])
+    dfdec1['costh2'] = np.cos(dfdec1['theta2'])
 
     # Opening angle
     p4s = [[px1,py1,pz1,e1], [px2,py2,pz2,e2]]
@@ -416,7 +424,7 @@ def throw_muons_at_CMS(df_input, ndecays=None, MAKE_PLOTS=False):
             nmuons += 1
             # Need to mix up z and y
             if j==0:
-                px1,py1,pz1 = df['px_mu1'],df['py_mu1'],df['pz_mu1']
+                px1,py1,pz1 = df['px1'],df['py1'],df['pz1']
                 pmag = df['pmag1']
                 dir = np.array([px1, py1, pz1])
             else:
