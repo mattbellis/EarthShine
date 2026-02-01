@@ -75,7 +75,7 @@ def distance(v1, v2):
 
 ##################################################################
 
-def draw_detector():
+def draw_detector(pt0=[0, 0, -15], pt1=[0, 0, 15], length=7.5):
     # Define detector
     #origin_detector = [0, 0, 0]
 
@@ -84,25 +84,26 @@ def draw_detector():
     # detector, units are meters. x is direction of beam and z is up
     #cylinder = Cylinder.from_points([-10.5, 0, 0], [10.5, 0, 0], 7.5)
     # Mock detectors
-    cylinder = Cylinder.from_points([-15, 0, 0], [15, 0, 0], 7.5)
+    #cylinder = Cylinder.from_points([0, 0, -15], [0, 0, 15], 7.5)
+    cylinder = Cylinder.from_points(pt0, pt1, length)
 
     #if MAKE_PLOTS:
     #fig1 = plt.figure(figsize=(6,6))
     #ax1 = fig1.add_subplot(1,1,1,projection='3d')
 
-    fig2 = plt.figure(figsize=(12,6))
-    ax2 = fig2.add_subplot(1,1,1,projection='3d')
+    fig = plt.figure(figsize=(12,6))
+    ax = fig.add_subplot(1,1,1,projection='3d')
 
     #fig3 = plt.figure(figsize=(4,4))
     #ax3 = fig3.add_subplot(1,1,1)
 
     # Draw detector
-    cylinder.plot_3d(ax2, alpha=0.2)
-    ax2.set_xlim(-100,100)
-    ax2.set_ylim(-100,100)
-    ax2.set_zlim(-100,20)
+    cylinder.plot_3d(ax, alpha=0.2)
+    ax.set_xlim(-100,100)
+    ax.set_ylim(-100,100)
+    ax.set_zlim(-100,100)
 
-    return fig2, ax2, cylinder
+    return fig, ax, cylinder
 
 ##########################################################################
 ################################################################################
@@ -161,7 +162,7 @@ def intersect_finite_cylinder_x_np(origins, directions,
     ok0 = real & (x0 >= -half_len) & (x0 <= half_len)
     ok1 = real & (x1 >= -half_len) & (x1 <= half_len)
 
-    # --- cap intersections ---
+     --- cap intersections ---
     # avoid division by zero
     nonpara = np.abs(Dx) > eps
     t_cap_pos = np.where(nonpara, ( half_len - Ox)/Dx, np.nan)
