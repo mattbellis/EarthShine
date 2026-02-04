@@ -10,12 +10,15 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
     infile = f'generated_data_{tag}.parquet'
     df_decays = pd.read_parquet(infile)
 
+    print(infile)
+    print(df_decays.shape)
+
     if masses is None:
         masses = df_decays['M_DM'].unique()
 
     df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['z0']**2) 
-    df_decays['phi0_origin'] = np.arctan(df_decays['z0'],df_decays['x0']) 
-    df_decays['theta1'] = np.arccos(df_decays['costh1']) 
+    #df_decays['phi0_origin'] = np.arctan(df_decays['z0'],df_decays['x0']) 
+    df_decays['phi0_origin'] = np.arctan2(df_decays['z0'],df_decays['x0']) 
 
     df_decays['p_pt_CMS'] = np.sqrt(df_decays['px1']**2 + df_decays['pz1']**2) 
     df_decays['p_phi_CMS'] = np.arctan(df_decays['pz1'],df_decays['px1']) 
@@ -39,7 +42,8 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         plt.figure(figsize=(8,6))
 
         plt.subplot(2,3,1)
-        df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
+        #df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
+        df_decays.plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
         plt.xlabel(r'Origin x (m)', fontsize=18)
         plt.ylabel(r'Origin y (m)', fontsize=18)
 
@@ -116,16 +120,16 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         plt.hist(df_decays[filter]['z0'],bins=100, range=(-4000,0))
         plt.xlabel('depth (m)', fontsize=18)
 
-        plt.subplot(2,2,2)
-        plt.hist(df_decays[filter]['rho0_origin'],bins=100, range=(-10,500))
-        plt.xlabel('radial distance (m)', fontsize=18)
+        #plt.subplot(2,2,2)
+        #plt.hist(df_decays[filter]['rho0_origin'],bins=100, range=(-10,500))
+        #plt.xlabel('radial distance (m)', fontsize=18)
         
         plt.subplot(2,2,3)
         df_decays[filter].plot.scatter(y='y0', x='x0', s=0.1, alpha=0.1, ax=plt.gca())        
         
         plt.subplot(2,2,4)
         #df_decays[filter].plot.scatter(y='efinal_mu1', x='y0', s=0.1, ax=plt.gca())
-        df_decays[filter].plot.scatter(y='pt1_detector_acceptance_eloss', x='rho0_origin', s=0.1, ax=plt.gca())
+        #df_decays[filter].plot.scatter(y='pt1_detector_acceptance_eloss', x='rho0_origin', s=0.1, ax=plt.gca())
         
         DMstr = 'DM'
         lbracket = '{'
@@ -161,9 +165,9 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         #plt.ylim(5e-4)
 
         plt.subplot(1,3,3)
-        df_decays[filter].plot.scatter(y='efinal_mu1', x='rho0_origin', s=0.1, ax=plt.gca())
-        plt.xlabel(r'Radial distance (m)', fontsize=18)
-        plt.ylabel(r'$E_{\mu}$ (GeV)', fontsize=18)
+        #df_decays[filter].plot.scatter(y='efinal_mu1', x='rho0_origin', s=0.1, ax=plt.gca())
+        #plt.xlabel(r'Radial distance (m)', fontsize=18)
+        #plt.ylabel(r'$E_{\mu}$ (GeV)', fontsize=18)
 
         plt.tight_layout()
 
@@ -186,11 +190,12 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         df_decays[filter]['pt1_detector_acceptance'].hist(bins=nbins, range=xranges,  histtype="step", density=True, linewidth=2.5, label='Ignoring eloss')
         df_decays[filter]['pt1_detector_acceptance_eloss'].hist(bins=nbins, range=xranges, histtype="step",density=True, linewidth=2.5,  label='With eloss')
         plt.xlabel(r'$p_{T}$ (GeV)', fontsize=18)
+        plt.ylim(1e-4)
         plt.legend()
         plt.yscale('log')
         
         plt.subplot(1,3,3)
-        df_decays[filter].plot.scatter(y='pt1_detector_acceptance', x='rho0_origin', s=0.1, ax=plt.gca())
+        #df_decays[filter].plot.scatter(y='pt1_detector_acceptance', x='rho0_origin', s=0.1, ax=plt.gca())
         plt.xlabel(r'Radial distance (m)', fontsize=18)
         plt.ylabel(r'$p_{T}$ (GeV) (no eloss)', fontsize=18)
 
@@ -203,7 +208,7 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         plt.figure(figsize=(12,4))
 
         plt.subplot(1,3,1)
-        df_decays[filter]['phi1'].hist(bins=50, range=(-1.6,1.6),  histtype="step",linewidth=2.5, label='Muons')
+        df_decays[filter]['phi1'].hist(bins=50, range=(-1.6,4.6),  histtype="step",linewidth=2.5, label='Muons')
         plt.xlabel(r'$p_{\phi}$ (GeV)', fontsize=18)
         plt.legend()
 
@@ -211,13 +216,14 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         df_decays[filter]['pt1_detector_acceptance'].hist(bins=50, range=(-100,3500),  histtype="step", density=True, linewidth=2.5, label='Ignoring eloss')
         df_decays[filter]['pt1_detector_acceptance_eloss'].hist(bins=50, range=(-100,3500), histtype="step",density=True, linewidth=2.5,  label='With eloss')
         plt.xlabel(r'$p_{T}$ (GeV)', fontsize=18)
+        plt.ylim(1e-4)
         plt.legend()
         plt.yscale('log')
         
         plt.subplot(1,3,3)
-        df_decays[filter].plot.scatter(y='pt1_detector_acceptance', x='phi0_origin', s=0.1, ax=plt.gca())
-        plt.xlabel(r'Radial distance (m)', fontsize=18)
-        plt.ylabel(r'$p_{T}$ (GeV) (no eloss)', fontsize=18)
+        #df_decays[filter].plot.scatter(y='pt1_detector_acceptance', x='phi0_origin', s=0.1, ax=plt.gca())
+        #plt.xlabel(r'Radial distance (m)', fontsize=18)
+        #plt.ylabel(r'$p_{T}$ (GeV) (no eloss)', fontsize=18)
 
         plt.tight_layout()
 
@@ -240,15 +246,15 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
 
         plt.subplot(2,2,3)
-        df_decays[filter]['phi0_origin'].hist(bins=50, range=(-1.6,1.6),  histtype="step",linewidth=2.5, label='Muons')
-        plt.xlabel(r'Origin $\phi$', fontsize=18)
-        plt.legend()
+        #df_decays[filter]['phi0_origin'].hist(bins=50, range=(-1.6,1.6),  histtype="step",linewidth=2.5, label='Muons')
+        #plt.xlabel(r'Origin $\phi$', fontsize=18)
+        #plt.legend()
 
         plt.subplot(2,2,4)
-        df_decays[filter]['phi0_origin'].hist(bins=50, range=(-1.6,1.6),  histtype="step",linewidth=2.5, label='Muons')
-        plt.xlabel(r'Origin $\phi$', fontsize=18)
-        plt.yscale('log')
-        plt.legend()
+        #df_decays[filter]['phi0_origin'].hist(bins=50, range=(-1.6,1.6),  histtype="step",linewidth=2.5, label='Muons')
+        #plt.xlabel(r'Origin $\phi$', fontsize=18)
+        #plt.yscale('log')
+        #plt.legend()
 
         plt.tight_layout()
 
