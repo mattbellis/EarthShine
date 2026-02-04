@@ -510,18 +510,24 @@ def generate_origins(nevents=100, radius=10, depth=-7.5):
     # Generate random origins in a circule
     origin_phi = 2*np.pi*np.random.random(nevents)
     origin_r = radius*np.sqrt(np.random.random(nevents))
+    #x = origin_r*np.cos(origin_phi)
+    #y = origin_r*np.sin(origin_phi)
+    #z = None
+    # Switch to CMS coordinates
     x = origin_r*np.cos(origin_phi)
-    y = origin_r*np.sin(origin_phi)
-    z = None
+    z = origin_r*np.sin(origin_phi)
+    y = None
+
     if type(depth)==int or type(depth)==float or type(depth)==np.float64:
-        z = depth*np.ones(nevents)
+        y = depth*np.ones(nevents)
     elif is_iterable(depth):
         width = depth[1] - depth[0]
-        z = depth[0] + (width*np.random.random(nevents))
+        y = depth[0] + (width*np.random.random(nevents))
     else:
         print(f"depth variable {depth} is not int,float, or iterable")
         print(f'{depth} {type(depth)}')
         return 0
+
     origins = np.array([x,y,z]).T
 
     return origins
@@ -538,11 +544,11 @@ def directions_from_momentum(df_decays):
         py = df_decays[f'py{i}']
         pz = df_decays[f'pz{i}']
 
-        pmag = np.sqrt(px*px + py*py + pz*pz)
+        #pmag = np.sqrt(px*px + py*py + pz*pz)
 
-        px /= pmag
-        py /= pmag
-        pz /= pmag
+        #px /= pmag
+        #py /= pmag
+        #pz /= pmag
 
         directions.append(np.array([px, py, pz]).T)
 
@@ -556,9 +562,15 @@ def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model
     # Generate random origins in a circule
     origin_phi = 2*np.pi*np.random.random(nevents)
     origin_r = radius*np.sqrt(np.random.random(nevents))
+    #x = origin_r*np.cos(origin_phi)
+    #y = origin_r*np.sin(origin_phi)
+    #z = None
+
+    # CMS coordinates
     x = origin_r*np.cos(origin_phi)
-    y = origin_r*np.sin(origin_phi)
-    z = None
+    z = origin_r*np.sin(origin_phi)
+    y = None
+
     if type(depth)==int or type(depth)==float:
         z = depth*np.ones(nevents)
     elif is_iterable(depth):
@@ -648,6 +660,117 @@ def projection_length_on_cylinder_base(p1, p2):
 ################################################################################
 
 ################################################################################
+def ray_cylinder_intersection(
+    origins: np.ndarray,      # Shape (N, 3) - starting points
+    directions: np.ndarray,   # Shape (N, 3) - momentum/direction vectors (not necessarily normalized)
+    radius: float,            # Cylinder radius
+    half_length: float        # Half the cylinder length (extends from -half_length to +half_length on z-axis)
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Compute entry and exit points for rays intersecting a cylinder centered at origin,
+    aligned along the z-axis.
+    
+    Parameters
+    ----------
+    origins : ndarray of shape (N, 3)
+        Starting points of the rays (outside the cylinder)
+    directions : ndarray of shape (N, 3)
+        Direction vectors (momentum vectors) of the rays
+    radius : float
+        Radius of the cylinder
+    half_length : float
+        Half-length of the cylinder (z ranges from -half_length to +half_length)
+    
+    Returns
+    -------
+    entry_points : ndarray of shape (N, 3)
+        Entry points into the cylinder (NaN for rays that miss)
+    exit_points : ndarray of shape (N, 3)
+        Exit points from the cylinder (NaN for rays that miss)
+    """
+    origins = np.atleast_2d(origins)
+    directions = np.atleast_2d(directions)
+    
+    N = origins.shape[0]
+    
+    # Initialize output arrays with NaN
+    entry_points = np.full((N, 3), np.nan)
+    exit_points = np.full((N, 3), np.nan)
+    
+    # Extract components
+    ox, oy, oz = origins[:, 0], origins[:, 1], origins[:, 2]
+    dx, dy, dz = directions[:, 0], directions[:, 1], directions[:, 2]
+    
+    # --- Curved surface intersection ---
+    # Solve (ox + t*dx)² + (oy + t*dy)² = R²
+    # This is a quadratic: a*t² + b*t + c = 0
+    a = dx**2 + dy**2
+    b = 2 * (ox * dx + oy * dy)
+    c = ox**2 + oy**2 - radius**2
+    
+    discriminant = b**2 - 4 * a * c
+    
+    # For each ray, we'll collect valid t values
+    # We need to handle curved surface and end caps separately
+    
+    t_candidates = np.full((N, 4), np.inf)  # Up to 4 candidate t values per ray
+    
+    # Curved surface intersections (where discriminant >= 0 and a != 0)
+    valid_curved = (discriminant >= 0) & (np.abs(a) > 1e-12)
+    sqrt_disc = np.sqrt(np.maximum(discriminant, 0))
+    
+    t1 = np.where(valid_curved, (-b - sqrt_disc) / (2 * a), np.inf)
+    t2 = np.where(valid_curved, (-b + sqrt_disc) / (2 * a), np.inf)
+    
+    # Check if curved surface intersections are within z bounds
+    z1 = oz + t1 * dz
+    z2 = oz + t2 * dz
+    
+    t1_valid = valid_curved & (t1 >= 0) & (np.abs(z1) <= half_length)
+    t2_valid = valid_curved & (t2 >= 0) & (np.abs(z2) <= half_length)
+    
+    t_candidates[:, 0] = np.where(t1_valid, t1, np.inf)
+    t_candidates[:, 1] = np.where(t2_valid, t2, np.inf)
+    
+    # --- End cap intersections ---
+    # Top cap: z = +half_length, solve oz + t*dz = half_length
+    # Bottom cap: z = -half_length
+   
+    # Avoid division by zero
+    dz_safe = np.where(np.abs(dz) > 1e-12, dz, np.inf)
+    
+    t_top = (half_length - oz) / dz_safe
+    t_bottom = (-half_length - oz) / dz_safe
+    
+    # Check if cap intersections are within radius
+    x_top = ox + t_top * dx
+    y_top = oy + t_top * dy
+    x_bottom = ox + t_bottom * dx
+    y_bottom = oy + t_bottom * dy
+    
+    r2_top = x_top**2 + y_top**2
+    r2_bottom = x_bottom**2 + y_bottom**2
+    
+    t_top_valid = (t_top >= 0) & (r2_top <= radius**2) & (np.abs(dz) > 1e-12)
+    t_bottom_valid = (t_bottom >= 0) & (r2_bottom <= radius**2) & (np.abs(dz) > 1e-12)
+    
+    t_candidates[:, 2] = np.where(t_top_valid, t_top, np.inf)
+    t_candidates[:, 3] = np.where(t_bottom_valid, t_bottom, np.inf)
+    
+    # --- Find the two smallest positive t values (entry and exit) ---
+    t_sorted = np.sort(t_candidates, axis=1)
+    
+    t_entry = t_sorted[:, 0]
+    t_exit = t_sorted[:, 1]
+    
+    # Rays that hit have finite entry and exit times
+    valid_hit = np.isfinite(t_entry) & np.isfinite(t_exit)
+    
+    # Compute intersection points
+    entry_points[valid_hit] = origins[valid_hit] + t_entry[valid_hit, np.newaxis] * directions[valid_hit]
+    exit_points[valid_hit] = origins[valid_hit] + t_exit[valid_hit, np.newaxis] * directions[valid_hit]
+    
+    return entry_points, exit_points
 
 
 ################################################################################
@@ -697,7 +820,7 @@ def visualize_ray_cylinder_intersections(
         How far to extend the dashed ray line beyond the cylinder
 
     Returns
-    -------
+    -----
     ax : matplotlib 3D axes
     """
     origins = np.atleast_2d(origins)

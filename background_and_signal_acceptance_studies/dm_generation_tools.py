@@ -186,7 +186,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
             # The core model has all the photons with their momentum in the z-direction
             # Old
             #boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
-            # Shifted CMS defintion so that 7 is up and z is along beamline
+            # Shifted CMS defintion so that y is up and z is along beamline
             boost_vector = np.array([0, pmag, 0, np.sqrt(pmag**2 + MASSES_A**2)])
             boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
 
@@ -299,6 +299,8 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
     dfdec1['theta1'] = theta
     dfdec1['phi1'] = phi
 
+    #####################################
+
     px2 = dfdec1['px2'].values
     py2 = dfdec1['py2'].values
     pz2 = dfdec1['pz2'].values
@@ -342,7 +344,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
 ################################################################################
 #$def intersect_CMS(df):
-#    #'''
+#    #''
 
 '''
 def throw_muons_at_CMS(df_input, ndecays=None, MAKE_PLOTS=False):

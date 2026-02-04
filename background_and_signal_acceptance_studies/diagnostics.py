@@ -13,24 +13,25 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
     if masses is None:
         masses = df_decays['M_DM'].unique()
 
-    df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['y0']**2) 
-    df_decays['phi0_origin'] = np.arctan(df_decays['y0'],df_decays['x0']) 
+    df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['z0']**2) 
+    df_decays['phi0_origin'] = np.arctan(df_decays['z0'],df_decays['x0']) 
     df_decays['theta1'] = np.arccos(df_decays['costh1']) 
 
-    df_decays['p_pt_CMS'] = np.sqrt(df_decays['px_mu1']**2 + df_decays['pz_mu1']**2) 
-    df_decays['p_phi_CMS'] = np.arctan(df_decays['pz_mu1'],df_decays['px_mu1']) 
-    df_decays['p_eta_CMS'] = 0.5*np.log((np.sqrt(df_decays['pmag1'])+df_decays['pz_mu1'])/(np.sqrt(df_decays['pmag1'])-df_decays['pz_mu1'])) 
+    df_decays['p_pt_CMS'] = np.sqrt(df_decays['px1']**2 + df_decays['pz1']**2) 
+    df_decays['p_phi_CMS'] = np.arctan(df_decays['pz1'],df_decays['px1']) 
+    df_decays['p_eta_CMS'] = 0.5*np.log((np.sqrt(df_decays['pmag1'])+df_decays['pz1'])/(np.sqrt(df_decays['pmag1'])-df_decays['pz1'])) 
 
     #df_decays['theta1'] = np.arccos(df_decays['costh1']) 
 
     for mass in masses:
         #mass = 1000
         
-        filter = (df_decays['efinal_mu1']>1)
-        filter = filter & (df_decays['M_DM']==mass)
+        #filter = (df_decays['efinal_mu1']>1)
+        #filter = filter & (df_decays['M_DM']==mass)
+        filter = (df_decays['M_DM']==mass)
 
         # For comparison
-        filter = filter & (np.abs(df_decays['e_mu1']-mass/2)/mass < 0.01)
+        filter = filter & (np.abs(df_decays['e1']-mass/2)/mass < 0.01)
 
         print(f'After selections: {len(df_decays[filter])}')
 
@@ -38,19 +39,19 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         plt.figure(figsize=(8,6))
 
         plt.subplot(2,3,1)
-        df_decays[filter].plot.scatter(y='y0', x='x0', s=0.1, ax=plt.gca())
+        df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
         plt.xlabel(r'Origin x (m)', fontsize=18)
         plt.ylabel(r'Origin y (m)', fontsize=18)
 
         plt.subplot(2,3,2)
-        df_decays[filter].plot.scatter(y='y0', x='z0', s=0.1, ax=plt.gca())
-        plt.xlabel(r'Origin x (m)', fontsize=18)
+        df_decays[filter].plot.scatter(x='z0', y='y0', s=0.1, ax=plt.gca())
+        plt.xlabel(r'Origin z (m)', fontsize=18)
         plt.ylabel(r'Origin y (m)', fontsize=18)
 
         plt.subplot(2,3,3)
-        df_decays[filter].plot.scatter(y='x0', x='z0', s=0.1, ax=plt.gca())
-        plt.xlabel(r'Origin x (m)', fontsize=18)
-        plt.ylabel(r'Origin y (m)', fontsize=18)
+        df_decays[filter].plot.scatter(x='z0', y='x0', s=0.1, ax=plt.gca())
+        plt.xlabel(r'Origin z (m)', fontsize=18)
+        plt.ylabel(r'Origin x (m)', fontsize=18)
 
         plt.tight_layout()
 
@@ -62,23 +63,26 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
         plt.figure(figsize=(7,9))
         plt.subplot(3,1,1)
-        df_decays[filter]['x0'].hist(bins=nbins, range=xranges, histtype="step", density=False, linewidth=2.5, label='Origin')
-        #df_decays[filter]['ip_x0'].hist(bins=nbins, range=xranges, histtype="step", density=False, linewidth=2.5, label='Detector IP')
+        df_decays[filter]['x0'].hist(bins=nbins, range=(-30,20), histtype="step", density=False, linewidth=2.5, label='Origin')
+        df_decays[filter]['ip_x0'].hist(bins=nbins, range=(-30,20), histtype="step", density=False, linewidth=2.5, label='Detector IP')
         plt.xlabel(r'Origin x (m)', fontsize=18)
         plt.yscale('log')
+        plt.legend()
 
 
         plt.subplot(3,1,2)
-        df_decays[filter]['y0'].hist(bins=nbins, range=xranges, histtype="step", density=False, linewidth=2.5, label='Origin')
-        #df_decays[filter]['ip_y0'].hist(bins=nbins, range=xranges, histtype="step", density=False, linewidth=2.5, label='Detector IP')
+        df_decays[filter]['y0'].hist(bins=nbins, range=(-30,20), histtype="step", density=False, linewidth=2.5, label='Origin')
+        df_decays[filter]['ip_y0'].hist(bins=nbins, range=(-30,20), histtype="step", density=False, linewidth=2.5, label='Detector IP')
         plt.xlabel(r'Origin y (m)', fontsize=18)
         plt.yscale('log')
+        plt.legend()
 
         plt.subplot(3,1,3)
-        df_decays[filter]['z0'].hist(bins=200, range=(-30,20), histtype="step", density=False, linewidth=2.5, label='Origin')
+        df_decays[filter]['z0'].hist(bins=200, range=(-30,20), histtype="step", density=False, linewidth=5.5, label='Origin')
         df_decays[filter]['ip_z0'].hist(bins=200, range=(-30,20), histtype="step", density=False, linewidth=2.5, label='Detector IP')
         plt.xlabel(r'Origin z (m)', fontsize=18)
         #plt.yscale('log')
+        plt.legend()
         
         plt.tight_layout()
 
@@ -143,13 +147,13 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         xranges = (min_xval, max_xval)
 
         plt.subplot(1,3,1)
-        df_decays[filter]['e_mu1'].hist(bins=nbins, range=xranges, histtype="step", density=True, linewidth=2.5, label='Orig. energy')
+        df_decays[filter]['e1'].hist(bins=nbins, range=xranges, histtype="step", density=True, linewidth=2.5, label='Orig. energy')
         df_decays[filter]['efinal_mu1'].hist(bins=nbins, range=xranges, histtype="step",density=True, linewidth=2.5,  label='Energy at detector')
         plt.xlabel(r'$E_{\mu}$ (GeV)', fontsize=18)
         plt.legend()
 
         plt.subplot(1,3,2)
-        df_decays[filter]['e_mu1'].hist(bins=nbins, range=xranges, density=True,  histtype="step",linewidth=2.5, label='Orig. energy')
+        df_decays[filter]['e1'].hist(bins=nbins, range=xranges, density=True,  histtype="step",linewidth=2.5, label='Orig. energy')
         df_decays[filter]['efinal_mu1'].hist(bins=nbins, range=xranges, density=True, histtype="step",linewidth=2.5,  label='Energy at detector')
         plt.xlabel(r'$E_{\mu}$ (GeV)', fontsize=18)
         plt.legend()
