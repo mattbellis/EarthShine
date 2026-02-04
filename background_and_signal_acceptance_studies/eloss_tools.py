@@ -23,7 +23,7 @@ import pandas as pd
 import seaborn as sns
 
 import numpy as np
-from sklearn.mixture import GaussianMixture
+#from sklearn.mixture import GaussianMixture
 from scipy.stats import multivariate_normal
 
 import numpy as np
