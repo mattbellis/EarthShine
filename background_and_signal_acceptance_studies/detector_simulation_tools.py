@@ -506,10 +506,21 @@ def return_tag(var):
 ##########################################################################
 
 ##########################################################################
-def generate_origins(nevents=100, radius=10, depth=-7.5):
+def generate_origins(nevents=100, radius=None, depth=-7.5):
     # Generate random origins in a circule
     origin_phi = 2*np.pi*np.random.random(nevents)
+
+    if radius is None:
+        detector_radius = 7.5
+        angle = np.deg2rad(91)
+        radius = np.abs(np.abs(depth)*np.tan(angle))
+
+        if radius>6000:
+            radius = 6000
+        print(f'Origin points will be uniformly scattered on a plane of radius {radius}')
+
     origin_r = radius*np.sqrt(np.random.random(nevents))
+
     #x = origin_r*np.cos(origin_phi)
     #y = origin_r*np.sin(origin_phi)
     #z = None
