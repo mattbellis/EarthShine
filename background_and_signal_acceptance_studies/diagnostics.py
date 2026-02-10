@@ -3,11 +3,14 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False):
+def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None):
+
+    if input_directory is None:
+        input_directory = './'
 
     tag = f'd_{d}_r_{r}_{tag}'
         
-    infile = f'generated_data_{tag}.parquet'
+    infile = f'{input_directory}/generated_data_{tag}.parquet'
     df_decays = pd.read_parquet(infile)
 
     print(infile)

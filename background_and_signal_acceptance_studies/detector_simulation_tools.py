@@ -513,7 +513,7 @@ def generate_origins(nevents=100, radius=None, depth=-7.5):
     if radius is None:
         detector_radius = 7.5
         angle = np.deg2rad(91)
-        radius = np.abs(np.abs(depth)*np.tan(angle))
+        radius = int(np.ceil(np.abs(np.abs(depth)*np.tan(angle))))
 
         if radius>6000:
             radius = 6000
@@ -541,7 +541,7 @@ def generate_origins(nevents=100, radius=None, depth=-7.5):
 
     origins = np.array([x,y,z]).T
 
-    return origins
+    return origins, radius
 
 ##########################################################################
 # Extract the momenta and calculate unit vectors for the directions

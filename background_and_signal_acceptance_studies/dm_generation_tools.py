@@ -18,6 +18,29 @@ import tensorflow
 
 import pickle
 
+import os
+
+################################################################################
+def make_directory(directory_name = None):
+
+    if directory_name is None:
+        print("No directory name passed in!\n")
+        return -1
+
+
+    # Create the directory
+    try:
+        os.mkdir(directory_name)
+        print(f"Directory '{directory_name}' created successfully.")
+    except FileExistsError:
+        print(f"Directory '{directory_name}' already exists.")
+    except PermissionError:
+        print(f"Permission denied: Unable to create '{directory_name}'.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    return 0
+
 ################################################################################
 
 def opening_angle(p4s):
@@ -217,7 +240,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
             E = np.sqrt(pmag**2 + MASSES_A**2)*np.ones(nevents_to_generate)
             
-            # Convert to Cartesiaan for phasespace
+            # Convert to Cartesian for phasespace
             #px = r*np.sin(theta)*np.cos(phi)
             #py = r*np.sin(theta)*np.sin(phi)
             #pz = r*np.cos(theta)
@@ -232,6 +255,17 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
             #boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
             #boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
+
+        # Generate a bunch of vectors of mass 0 assuming there is no boost from the photon. 
+        # Instead, we get muons with fixed momentum of 1/2 DM_MASS
+        elif dm_model=='momentum_constrained':
+
+            px = np.zeros(nevents_to_generate)
+            py = np.zeros(nevents_to_generate)
+            pz = np.zeros(nevents_to_generate)
+            E = pmag*np.ones(nevents_to_generate)
+            boost_vectors = np.array([px, py, pz, E]).T
+
         else:
             print(f"Dark matter model '{dm_model}' has not been implemented!")
             print("No events will be generated")
