@@ -3,12 +3,17 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None):
+def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None, ONLY_TOP_HALF=False):
 
     if input_directory is None:
         input_directory = './'
 
     tag = f'd_{d}_r_{r}_{tag}'
+    if ONLY_TOP_HALF:
+        out_tag = f'd_{d}_r_{r}_{tag}_top_half'
+    else:
+        out_tag = f'd_{d}_r_{r}_{tag}'
+
         
     infile = f'{input_directory}/generated_data_{tag}.parquet'
     df_decays = pd.read_parquet(infile)
@@ -36,8 +41,14 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         filter = filter & (df_decays['M_DM']==mass)
         #filter = (df_decays['M_DM']==mass)
 
-        # For comparison
+        # For comparison, constrain energy of muons to be
+        # close to 1/2 the mass of the DM
         filter = filter & (np.abs(df_decays['e1']-mass/2)/mass < 0.01)
+
+        if ONLY_TOP_HALF:
+            print(f"ONLY_TOP_HALF: {ONLY_TOP_HALF}")
+            filter = filter & (df_decays['ip_y0']<0)
+            #print(df_decays['ip_y0'])
 
         print(f'After selections: {len(df_decays[filter])}')
 
@@ -59,13 +70,11 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         df_decays[filter].plot.scatter(x='z0', y='x0', s=0.1, ax=plt.gca())
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin x (m)', fontsize=14)
-        plt.xlim(-500,500)
-        plt.ylim(-500,500)
+        plt.xlim(-900,900)
+        plt.ylim(-900,900)
 
         #plt.tight_layout()
 
-        #outfile = f'origin_d_{r}_r_{r}_{tag}.png'
-        #plt.savefig(outfile)
         #########################################################################
         max_xval = 150
         min_xval = -150
@@ -97,8 +106,6 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         
         #plt.tight_layout()
 
-        #outfile = f'origin_and_detector_entry_d_{r}_r_{r}_{tag}.png'
-        #plt.savefig(outfile)
 
         ########################################################################
 
@@ -108,6 +115,8 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         df_decays[filter].plot.scatter(y='ip_y0', x='ip_x0', s=0.1, ax=plt.gca())
         plt.xlabel(r'Detector entry x (m)', fontsize=14)
         plt.ylabel(r'Detector entry y (m)', fontsize=14)
+        plt.ylim(-2,2)
+        plt.xlim(-2,2)
 
         plt.subplot(3,3,8)
         df_decays[filter].plot.scatter(y='ip_y0', x='ip_z0', s=0.1, ax=plt.gca())
@@ -121,8 +130,7 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
         plt.tight_layout()
 
-        outfile = f'origin_and_detector_entry_d_{r}_r_{r}_{tag}.png'
-        #outfile = f'detector_entry_d_{r}_r_{r}_{tag}.png'
+        outfile = f'origin_and_detector_entry_d_{r}_r_{r}_{out_tag}.png'
         plt.savefig(outfile)
         ########################################################################
 
@@ -154,8 +162,6 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
         #plt.tight_layout()
 
-        #outfile = f'theta_phi_d_{r}_r_{r}_{tag}.png'
-        #plt.savefig(outfile)
         
         ########################################################################
         #plt.figure(figsize=(12,4))
@@ -183,8 +189,6 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
         #plt.tight_layout()
 
-        #outfile = f'e_d_{r}_r_{r}_{tag}.png'
-        #plt.savefig(outfile)
         
         ########################################################################
         #plt.figure(figsize=(12,4))
@@ -217,7 +221,7 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
         plt.tight_layout()
 
-        outfile = f'kinematic_d_{r}_r_{r}_{tag}.png'
+        outfile = f'kinematic_d_{r}_r_{r}_{out_tag}.png'
         plt.savefig(outfile)
 
     
