@@ -3,14 +3,14 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None, ONLY_TOP_HALF=False):
+def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None):
 
     if input_directory is None:
         input_directory = './'
 
     tag = f'd_{d}_r_{r}_{tag}'
-    if ONLY_TOP_HALF:
-        out_tag = f'd_{d}_r_{r}_{tag}_top_half'
+    if DETECTOR_Y_CONSTRAINED is not None:
+        out_tag = f'd_{d}_r_{r}_{tag}_DETECTOR_Y_CONSTRAINED_{DETECTOR_Y_CONSTRAINED}'
     else:
         out_tag = f'd_{d}_r_{r}_{tag}'
 
@@ -25,14 +25,12 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         masses = df_decays['M_DM'].unique()
 
     df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['z0']**2) 
-    #df_decays['phi0_origin'] = np.arctan(df_decays['z0'],df_decays['x0']) 
     df_decays['phi0_origin'] = np.arctan2(df_decays['z0'],df_decays['x0']) 
 
     df_decays['p_pt_CMS'] = np.sqrt(df_decays['px1']**2 + df_decays['pz1']**2) 
     df_decays['p_phi_CMS'] = np.arctan(df_decays['pz1'],df_decays['px1']) 
     df_decays['p_eta_CMS'] = 0.5*np.log((np.sqrt(df_decays['pmag1'])+df_decays['pz1'])/(np.sqrt(df_decays['pmag1'])-df_decays['pz1'])) 
 
-    #df_decays['theta1'] = np.arccos(df_decays['costh1']) 
 
     for mass in masses:
         #mass = 1000
@@ -45,10 +43,9 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         # close to 1/2 the mass of the DM
         filter = filter & (np.abs(df_decays['e1']-mass/2)/mass < 0.01)
 
-        if ONLY_TOP_HALF:
-            print(f"ONLY_TOP_HALF: {ONLY_TOP_HALF}")
-            filter = filter & (df_decays['ip_y0']<0)
-            #print(df_decays['ip_y0'])
+        if DETECTOR_Y_CONSTRAINED is not None:
+            print(f"DETECTOR_Y_CONSTRAINED: {DETECTOR_Y_CONSTRAINED}")
+            filter = filter & (df_decays['ip_y0']<DETECTOR_Y_CONSTRAINED)
 
         print(f'After selections: {len(df_decays[filter])}')
 
@@ -57,7 +54,6 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
         plt.subplot(3,3,1)
         df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
-        #df_decays.plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
         plt.xlabel(r'Origin x (m)', fontsize=14)
         plt.ylabel(r'Origin y (m)', fontsize=14)
 
@@ -72,8 +68,6 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         plt.ylabel(r'Origin x (m)', fontsize=14)
         plt.xlim(-900,900)
         plt.ylim(-900,900)
-
-        #plt.tight_layout()
 
         #########################################################################
         max_xval = 150
@@ -178,14 +172,12 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         plt.xlabel(r'$E_{\mu}$ (GeV)', fontsize=14)
         plt.legend()
 
-        #plt.subplot(3,2,5)
         plt.sca(axes['E'])
         df_decays[filter]['e1'].hist(bins=nbins, range=xranges, density=True,  histtype="step",linewidth=2.5, label='Orig. energy')
         df_decays[filter]['efinal_mu1'].hist(bins=nbins, range=xranges, density=True, histtype="step",linewidth=2.5,  label='Energy at detector')
         plt.xlabel(r'$E_{\mu}$ (GeV)', fontsize=14)
         plt.legend()
         plt.yscale('log')
-        #plt.ylim(5e-4)
 
         #plt.tight_layout()
 
@@ -214,11 +206,6 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         plt.legend()
         plt.yscale('log')
         
-        #plt.subplot(1,3,3)
-        #df_decays[filter].plot.scatter(y='pt1_detector_acceptance', x='rho0_origin', s=0.1, ax=plt.gca())
-        #plt.xlabel(r'Radial distance (m)', fontsize=14)
-        #plt.ylabel(r'$p_{T}$ (GeV) (no eloss)', fontsize=14)
-
         plt.tight_layout()
 
         outfile = f'kinematic_d_{r}_r_{r}_{out_tag}.png'
