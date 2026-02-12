@@ -11,10 +11,13 @@ from skspatial.objects import Line, Cylinder, Point
 from skspatial.plotting import plot_3d
 
 import detector_simulation_tools as dst
+import eloss_tools
 
 import phasespace
 
 import tensorflow
+
+import time
 
 import pickle
 
@@ -377,166 +380,237 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
 
 ################################################################################
-#$def intersect_CMS(df):
-#    #''
 
-'''
-def throw_muons_at_CMS(df_input, ndecays=None, MAKE_PLOTS=False):
+def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, \
+                             radius=20, detector_radius=7.5, half_len=10.5, depth=-7.5, dm_model='floating', 
+                             SAVE_ONLY_DETECTED=True, eloss_dict_name=None, 
+                             save_to_file=False, additional_tag="", output_directory=None):
 
-    # Define CMS
-    origin_CMS = [0, 0, 0]
-
-    nmuons = 0
-
-    # CMS, units are meters. x is direction of beam and z is up
-    cylinder = Cylinder.from_points([-10.5, 0, 8], [10.5, 0, 8], 7.5)
-
-    if MAKE_PLOTS:
-    fig1 = plt.figure(figsize=(6,6))
-    ax1 = fig1.add_subplot(1,1,1,projection='3d')
-
-    fig2 = plt.figure(figsize=(12,12))
-    ax2 = fig2.add_subplot(1,1,1,projection='3d')
-
-    fig3 = plt.figure(figsize=(4,4))
-    ax3 = fig3.add_subplot(1,1,1)
-
-    # Draw CMS
-    cylinder.plot_3d(ax2, alpha=0.2)
-
-    # Which to use?
-    #mask = (dfdec2['DM_MASS']==100)
-    #mask = mask & (dfdec2['M_A']==5)
-    #dftmp = dfdec2[mask]
+    #######################################################################
+    # Create the output directory
+    #######################################################################
+    if output_directory is not None:
+        retval = make_directory(output_directory)
+        if retval == -1:
+            print("Output directory not created. Stopping DM generation.\n")
+            return -1
+    else:
+        output_directory = './'
     
-    #mask = (dfdec1['pmag']==1000000)
-    #mask = mask & (dfdec1['M_A']==5000)
-    #dftmp = dfdec1[mask]
-
-    #dftmp = df_input
+    #######################################################################
+    # Generate the decays of the dark photons
+    #######################################################################
     
-    if ndecays is None:
-        ndecays = len(df_input)
-        print(f"Will run over {ndecays} decays")
+    start_time = time.time()
+    #df_decays = generate_dm_decays(MASSES_A=MASSES_A, MASSES_DM=MASSES_DM, nevents_to_generate=nevents)
+    df_decays = generate_dm_decays(MASSES_A=MASSES_A, MASSES_DM=MASSES_DM, nevents_to_generate=nevents_to_generate, dm_model=dm_model)
+    
+    print(f"\nTime to generate events {time.time() - start_time:.2} seconds  ------")
 
-    distances = []
-    pmag_origin = []
-    pmag_cms = []
+    #######################################################################
+    # Place the decay points
+    #######################################################################
 
-    # Range over which to generate the interaction where the muon pairs are created
-    limits = 100
-    xlo, xhi = -limits,limits
-    ylo, yhi = -limits,limits
-    zlo, zhi = -limits, -1
+    nentries = len(df_decays)
 
-    xwidth = xhi-xlo
-    ywidth = yhi-ylo
-    zwidth = zhi-zlo
+    #origins, directions = dst.generate_origins_and_directions(nevents=nentries, radius=radius, depth=depth, dm_model=dm_model)
+    origins, radius = dst.generate_origins(nevents=nentries, radius=radius, depth=depth)
 
-    # Generate the points
-    #npts = 3000
-    #for i in dftmp.index[0:npts]:
-    for i in range(0,ndecays):
+    #print(origins)
+    
+    #######################################################################
+    # What strikes the detector
+    #######################################################################
 
-        #print(i)
+    # These directions have magnitude 1
+    directions1, directions2 = dst.directions_from_momentum(df_decays)
 
-        if i%10000==0:
+    # We multiply the directions so that they are incredibly long vectors to make sure the line
+    # is long enough to potentially intersect the detector
+    # JUST DOING THIS FOR ONE MUON FOR NOW
+    # NEED TO FIX THIS LATER
+    #pts0,pts1 = dst.intersect_finite_cylinder_x_np(origins=origins, directions=1e6*directions1)
+    # For tracker
+    #pts0,pts1 = dst.intersect_finite_cylinder_x_np(origins=origins, directions=1e6*directions1, \
+    #                                               radius=detector_radius, half_len=half_len)
+
+    # From Claude with CMS coordinates
+    pts0,pts1 = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
+                                                   radius=detector_radius, half_length=half_len)
+    #print(pts0)
+    
+    hit_detector_idx = ~np.isnan(pts0.T[0])
+    
+    df_decays['hit_detector'] = hit_detector_idx
+    
+    df_decays['x0'] = origins.T[0]
+    df_decays['y0'] = origins.T[1]
+    df_decays['z0'] = origins.T[2]
+    
+    distance_to_detector = np.sqrt(df_decays['x0']*df_decays['x0'] + df_decays['y0']*df_decays['y0'] + df_decays['z0']*df_decays['z0'])
+    
+    df_decays['distance_to_detector'] = distance_to_detector
+    
+    #df_decays['px0'] = directions.T[0]
+    #df_decays['py0'] = directions.T[1]
+    #df_decays['pz0'] = directions.T[2]
+
+    # Save the intersection points
+    df_decays['ip_x0'] = pts0.T[0]
+    df_decays['ip_y0'] = pts0.T[1]
+    df_decays['ip_z0'] = pts0.T[2]
+
+    df_decays['ip_x1'] = pts1.T[0]
+    df_decays['ip_y1'] = pts1.T[1]
+    df_decays['ip_z1'] = pts1.T[2]
+
+    # Did it
+    #px,py,pz = directions.T
+    #pmag = np.sqrt(px**2 + py**2 + pz**2)
+    #
+    #theta = np.arccos(pz/pmag)
+    #phi = np.arctan2(py, px)
+
+    #######################################################################
+    # Do we save only the ones that strike the detector?
+    #######################################################################
+    detected_tag = ""
+    if SAVE_ONLY_DETECTED:
+        print("Saving only the tracks that strike the detector")
+        print(f"Initially dataframe is {df_decays.shape}")
+        filter = df_decays['hit_detector'] == True
+        df_temp = df_decays[filter]
+        del df_decays
+        df_decays = df_temp
+        print(f"After only keeping some tracks, dataframe is {df_decays.shape}")
+        detected_tag = "_HIT_DETECTOR"
+        
+    #######################################################################
+    # Calculate eloss
+    #######################################################################
+
+    # New stuff with precomputed splines
+    start = time.time()
+
+    #'''
+    # Load the spline object from the file
+    with open(eloss_dict_name, 'rb') as file_handle:
+        loaded_eloss_dict = pickle.load(file_handle)
+    
+    #print(f'Time to read energy loss spline file is {time.time() - start} seconds')
+
+    lookup = eloss_tools.RaggedSplineIndexLookup(loaded_eloss_dict)
+
+    ########### NEED TO DO THIS FOR BOTH MUONS!!!!!!!!! ######################
+    #E_query = 10000 + 2000*np.random.random(nvals)
+    #d_query = 1000*np.random.random(nvals)
+    E_query = df_decays['e1']
+    d_query = df_decays['distance_to_detector']
+
+    #print(d_query)
+    
+    E_idx, D_idx = lookup.get_indices(E_query, d_query)
+
+    print(f'Processing eloss for {len(E_query)} muons')
+    start = time.time()
+    
+    uniq, counts = eloss_tools.count_pairs(E_idx, D_idx)    
+    print(f'{len(uniq)=}, {len(counts)=}, {sum(counts)=}')
+    
+    eloss_data = {}
+    for i,(u,c) in enumerate(zip(uniq, counts)):
+        #print(u,c)
+        if i%1000==0:
             print(i)
+        ei,di = u
+        #di = u[1]
+        E_index = lookup.energy_keys[ei]
+        d_index = lookup.dist_keys[ei][di]
+        #print(u,c,E_index, d_index)
+        spl = loaded_eloss_dict[E_index][d_index]
+        de_vals = eloss_tools.generate_data_from_spline(spl, c)
+        #print(de_vals)
+        #eloss_data[(E_index,d_index)] = de_vals
+        eloss_data[(ei,di)] = de_vals
+    
+    #print(f"Calculated all the uniq and counts")
+    
+    e_final_vals = []
+    de = -1
+    for i in range(len(E_query)):
+        ei = E_idx[i]
+        di = D_idx[i]
+        # CHECK THIS BUT I THINK di is -1 when the distance is greater than the 
+        # the max distance for that energy
+        de_vals = eloss_data[(ei,di)]#.pop()
+        #print(ei,di,de_vals)
+        if len(de_vals)>0 and di>-1:
+            de = de_vals.pop()
+        else:
+            # Make the delta E the same as the initial energy
+            de = E_query.iloc[i]
+        #print(i, len(E_query))
+        efin = E_query.iloc[i] - de
+        #print(E_query.iloc[i], di, de, efin)
+        if efin<0:
+            efin = 0
+        e_final_vals.append(efin)
+    
+    print(f'Time to calculate eloss for {len(E_query)} muons is {time.time() - start} seconds')
 
-        # Generate the interaction point of the muon pairs
-        origin = [xhi-xwidth*np.random.random(), yhi-ywidth*np.random.random(), -zhi-zwidth*np.random.random()]
+    df_decays['efinal_mu1'] = e_final_vals
 
-        # For debugging
-        #origin = [0, 0, -10]
+    #######################################################################
+    # Calculate pt as seen by the detector
+    #######################################################################
+    #pt = np.cos(theta) * df_decays['pmag1']
+    # Get the intersection points back from the dataframe after reductions
+    pts0 = np.array([df_decays['ip_x0'], df_decays['ip_y0'], df_decays['ip_z0']]).T 
+    pts1 = np.array([df_decays['ip_x1'], df_decays['ip_y1'], df_decays['ip_z1']]).T 
 
-        # Print all the origins
-        #Point(origin).plot_3d(ax1, c='k')
+    projection,vmag = dst.projection_length_on_plane_from_points(pts0, pts1)    
+    #projection,vmag = dst.projection_length_on_plane_from_points(pts0[hit_detector_idx], pts1[hit_detector_idx])
 
-        df = dftmp.iloc[i]
-        pmag = None
+    #print(projection)
+    #print(vmag)
+    ######## SHOULD BE CONSISTENT ABOUT USING PMAG OR ENERGY
+    transverse_scaling = projection/vmag
+    pt = transverse_scaling * df_decays['pmag1']
+    pt_eloss = transverse_scaling * df_decays['efinal_mu1']
+    
+    #print(len(pt))
+    #print(len(pt_eloss))
+    
+    df_decays['pt1_detector_acceptance'] = pt
+    df_decays['pt1_detector_acceptance_eloss'] = pt_eloss
+    
+    #df_decays['pt1_scaling_detector_acceptance'] = transverse_scaling
+    
+    #df_decays['costh1_detector_acceptance'] = np.cos(theta)
+    #df_decays['phi1_detector_acceptance'] = phi
+    #df_decays['pmag1_detector_acceptance'] = pmag
+    #'''
 
-        # Loop over the pairs
-        for j in [0,1]:
-            nmuons += 1
-            # Need to mix up z and y
-            if j==0:
-                px1,py1,pz1 = df['px1'],df['py1'],df['pz1']
-                pmag = df['pmag1']
-                dir = np.array([px1, py1, pz1])
-            else:
-                px2,py2,pz2 = df['px_mu2'],df['py_mu2'],df['pz_mu2']
-                pmag = df['pmag2']
-                dir = np.array([px2, py2, pz2])
+    ##########################################################################
+    # Generate a tag that represents all this information
+    depth_tag = dst.return_tag(depth)
+    m_dm_tag = dst.return_tag(MASSES_DM)
+    m_a_tag = dst.return_tag(MASSES_A)
 
-      # Skip downward traveling muons
-      # Skip downward traveling muons
-      if dir[2]<0:
-        #print("skipping ",j,dir)
-        continue
+    radius_tag = 'AD' # Angle dependent
+    if radius is not None:
+        radius_tag = f'{radius}'
+    tag = f'd_{depth_tag}_r_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dm_model_{dm_model}{detected_tag}{additional_tag}'
 
-      # Need to do this to draw the lines correction
-      m = mag(dir)
-      dir /= m
-      dir *= xwidth
+    # Do we write it all out to a file?
+    if save_to_file:
+        outfile = f'{output_directory}/generated_data_{tag}.parquet'
+        df_decays.to_parquet(outfile)#, key='df')
+        print(f'Saved to file {outfile}')
+    ##########################################################################
 
-      #print("origin")
-      #print(origin)
-      #print('dir')
-      #print(dir)
 
-      line = Line(point=origin, direction=dir) # Point and direction vector
+    return df_decays, tag
 
-      #print("here")
-      point_a,point_b = None, None
-      try:
-        point_a, point_b = cylinder.intersect_line(line, infinite=False)
-      except ValueError:
-        1
-        #print('does not')
 
-      #print('which:  ',j)
-      #print('dir:    ',dir)
-      #print('origin: ', origin)
-      #print('points: ',point_a, point_b)
-
-      if point_a is not None:
-        1
-        #point_a.plot_3d(ax2, c='r',s=10)
-        #line.plot_3d(ax2, c='k'),#, t_2=100),
-        #Point(origin).plot_3d(ax2, c='b')
-        #print(origin)
-        #print(dir)
-
-      if point_b is not None:
-        1
-        #point_b.plot_3d(ax2, c='g',s=10)
-
-      if point_b is None or point_a is None:
-        1
-        #line.plot_3d(ax2, c='y', linestyle='--'),#, t_2=100),
-        #Point(origin).plot_3d(ax2, c='y')
-      else:
-        d = distance(point_a, origin)
-        distances.append(d)
-        pmag_origin.append(pmag)
-        pfinal = eloss_interp(pmag,d)[0][0]
-        pmag_cms.append(pfinal)
-
-  if MAKE_PLOTS:
-    ax2.set_xlim(-20,20)
-    ax2.set_ylim(-20,20)
-    ax2.set_zlim(-20,20)
-    ax2.set_xlabel('x')
-    ax2.set_ylabel('y')
-    ax2.set_zlabel('z')
-
-    plt.sca(ax3)
-    plt.hist(distances);
-
-  nhits = len(distances)
-  print(f"{nhits}  {ndecays}   {nhits/ndecays:.6f}")
-
-  return pmag_origin, pmag_cms, distances, nmuons
-
-'''
 
