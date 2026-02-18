@@ -3,6 +3,8 @@ import pandas as pd
 import detector_simulation_tools as dst
 import eloss_tools
 
+import eloss_average
+
 import phasespace
 
 import time
@@ -370,7 +372,8 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, \
                              disk_radius=None, detector_radius=7.5, half_len=10.5, depth=-7.5, dm_model='floating', 
                              SAVE_ONLY_DETECTED=True, eloss_dict_name=None, 
-                             save_to_file=False, additional_tag="", output_directory=None):
+                             save_to_file=False, additional_tag="", output_directory=None, 
+                         AVERAGE_ELOSS=False):
 
     #######################################################################
     # Create the output directory
@@ -480,70 +483,80 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     # New stuff with precomputed splines
     start = time.time()
 
-    #'''
-    # Load the spline object from the file
-    with open(eloss_dict_name, 'rb') as file_handle:
-        loaded_eloss_dict = pickle.load(file_handle)
-    
-    #print(f'Time to read energy loss spline file is {time.time() - start} seconds')
+    e_final_vals = None
 
-    lookup = eloss_tools.RaggedSplineIndexLookup(loaded_eloss_dict)
+    if AVERAGE_ELOSS is False:
 
-    ########### NEED TO DO THIS FOR BOTH MUONS!!!!!!!!! ######################
-    #E_query = 10000 + 2000*np.random.random(nvals)
-    #d_query = 1000*np.random.random(nvals)
-    E_query = df_decays['e1']
-    d_query = df_decays['distance_to_detector']
+        #'''
+        # Load the spline object from the file
+        with open(eloss_dict_name, 'rb') as file_handle:
+            loaded_eloss_dict = pickle.load(file_handle)
+        
+        #print(f'Time to read energy loss spline file is {time.time() - start} seconds')
 
-    #print(d_query)
-    
-    E_idx, D_idx = lookup.get_indices(E_query, d_query)
+        lookup = eloss_tools.RaggedSplineIndexLookup(loaded_eloss_dict)
 
-    print(f'Processing eloss for {len(E_query)} muons')
-    start = time.time()
-    
-    uniq, counts = eloss_tools.count_pairs(E_idx, D_idx)    
-    print(f'{len(uniq)=}, {len(counts)=}, {sum(counts)=}')
-    
-    eloss_data = {}
-    for i,(u,c) in enumerate(zip(uniq, counts)):
-        #print(u,c)
-        if i%1000==0:
-            print(i)
-        ei,di = u
-        #di = u[1]
-        E_index = lookup.energy_keys[ei]
-        d_index = lookup.dist_keys[ei][di]
-        #print(u,c,E_index, d_index)
-        spl = loaded_eloss_dict[E_index][d_index]
-        de_vals = eloss_tools.generate_data_from_spline(spl, c)
-        #print(de_vals)
-        #eloss_data[(E_index,d_index)] = de_vals
-        eloss_data[(ei,di)] = de_vals
-    
-    #print(f"Calculated all the uniq and counts")
-    
-    e_final_vals = []
-    de = -1
-    for i in range(len(E_query)):
-        ei = E_idx[i]
-        di = D_idx[i]
-        # CHECK THIS BUT I THINK di is -1 when the distance is greater than the 
-        # the max distance for that energy
-        de_vals = eloss_data[(ei,di)]#.pop()
-        #print(ei,di,de_vals)
-        if len(de_vals)>0 and di>-1:
-            de = de_vals.pop()
-        else:
-            # Make the delta E the same as the initial energy
-            de = E_query.iloc[i]
-        #print(i, len(E_query))
-        efin = E_query.iloc[i] - de
-        #print(E_query.iloc[i], di, de, efin)
-        if efin<0:
-            efin = 0
-        e_final_vals.append(efin)
-    
+        ########### NEED TO DO THIS FOR BOTH MUONS!!!!!!!!! ######################
+        #E_query = 10000 + 2000*np.random.random(nvals)
+        #d_query = 1000*np.random.random(nvals)
+        E_query = df_decays['e1']
+        d_query = df_decays['distance_to_detector']
+
+        #print(d_query)
+        
+        E_idx, D_idx = lookup.get_indices(E_query, d_query)
+
+        print(f'Processing eloss for {len(E_query)} muons')
+        start = time.time()
+        
+        uniq, counts = eloss_tools.count_pairs(E_idx, D_idx)    
+        print(f'{len(uniq)=}, {len(counts)=}, {sum(counts)=}')
+        
+        eloss_data = {}
+        for i,(u,c) in enumerate(zip(uniq, counts)):
+            #print(u,c)
+            if i%1000==0:
+                print(i)
+            ei,di = u
+            #di = u[1]
+            E_index = lookup.energy_keys[ei]
+            d_index = lookup.dist_keys[ei][di]
+            #print(u,c,E_index, d_index)
+            spl = loaded_eloss_dict[E_index][d_index]
+            de_vals = eloss_tools.generate_data_from_spline(spl, c)
+            #print(de_vals)
+            #eloss_data[(E_index,d_index)] = de_vals
+            eloss_data[(ei,di)] = de_vals
+        
+        #print(f"Calculated all the uniq and counts")
+        
+        e_final_vals = []
+        de = -1
+        for i in range(len(E_query)):
+            ei = E_idx[i]
+            di = D_idx[i]
+            # CHECK THIS BUT I THINK di is -1 when the distance is greater than the 
+            # the max distance for that energy
+            de_vals = eloss_data[(ei,di)]#.pop()
+            #print(ei,di,de_vals)
+            if len(de_vals)>0 and di>-1:
+                de = de_vals.pop()
+            else:
+                # Make the delta E the same as the initial energy
+                de = E_query.iloc[i]
+            #print(i, len(E_query))
+            efin = E_query.iloc[i] - de
+            #print(E_query.iloc[i], di, de, efin)
+            if efin<0:
+                efin = 0
+            e_final_vals.append(efin)
+
+    else:
+        E_query = df_decays['e1']
+        d_query = df_decays['distance_to_detector']
+        e_final_vals = eloss_average.propagate_muon(E_query, d_query)
+
+        
     print(f'Time to calculate eloss for {len(E_query)} muons is {time.time() - start} seconds')
 
     df_decays['efinal_mu1'] = e_final_vals
@@ -588,7 +601,11 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     radius_tag = 'AD' # Angle dependent
     if disk_radius is not None:
         radius_tag = f'{disk_radius}'
-    tag = f'depth_{depth_tag}_diskR_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dmModel_{dm_model}{detected_tag}{additional_tag}'
+    average_eloss_tag = '' # Angle dependent
+    if AVERAGE_ELOSS is True:
+        average_eloss_tag = f'_ave_eloss'
+
+    tag = f'depth_{depth_tag}_diskR_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dmModel_{dm_model}_{detected_tag}_{average_eloss_tag}_{additional_tag}'
 
     # Do we write it all out to a file?
     if save_to_file:
