@@ -313,11 +313,11 @@ def invmass_cols(p4):
 ##########################################################################
 def opening_angle(p4s):
   p0mag = np.sqrt(p4s[0][0]**2 + p4s[0][1]**2 + p4s[0][2]**2)
-  p1mag = np.sqrt(p4s[1][0]**2 + p4s[1][1]**2 + p4s[1][2]**2)
+  detector_entry_ptsmag = np.sqrt(p4s[1][0]**2 + p4s[1][1]**2 + p4s[1][2]**2)
 
   dot_product = p4s[0][0]*p4s[1][0] + p4s[0][1]*p4s[1][1] + p4s[0][2]*p4s[1][2]
 
-  theta = np.arccos(dot_product/(p0mag*p1mag))
+  theta = np.arccos(dot_product/(p0mag*detector_entry_ptsmag))
 
   return theta
 
@@ -454,9 +454,9 @@ def intersect_finite_cylinder_x_np(origins, directions,
 
     # --- recover 3D points; NaNs propagate automatically ---
     P0 = O + t0[:,None] * D
-    P1 = O + t1[:,None] * D
+    detector_entry_pts = O + t1[:,None] * D
 
-    return P0, P1
+    return P0, detector_entry_pts
 
 ################################################################################
 ################################################################################
@@ -506,27 +506,26 @@ def return_tag(var):
 ##########################################################################
 
 ##########################################################################
-def generate_origins(nevents=100, radius=None, depth=-7.5):
+def generate_origins(nevents=100, disk_radius=None, depth=0):
     # Generate random origins in a circule
     origin_phi = 2*np.pi*np.random.random(nevents)
 
-    if radius is None:
-        detector_radius = 7.5
+    if disk_radius is None:
         angle = np.deg2rad(91)
-        radius = int(np.ceil(np.abs(np.abs(depth)*np.tan(angle))))
+        disk_radius = int(np.ceil(np.abs(np.abs(depth)*np.tan(angle))))
 
-        if radius>6000:
-            radius = 6000
-        print(f'Origin points will be uniformly scattered on a plane of radius {radius}')
-
-    origin_r = radius*np.sqrt(np.random.random(nevents))
+        if disk_radius>6000:
+            disk_radius = 6000
+        
+    print(f'Origin points will be uniformly scattered on a plane with a disk radius: {disk_radius} m')
+    origin_random = disk_radius*np.sqrt(np.random.random(nevents))
 
     #x = origin_r*np.cos(origin_phi)
     #y = origin_r*np.sin(origin_phi)
     #z = None
     # Switch to CMS coordinates
-    x = origin_r*np.cos(origin_phi)
-    z = origin_r*np.sin(origin_phi)
+    x = origin_random*np.cos(origin_phi)
+    z = origin_random*np.sin(origin_phi)
     y = None
 
     if type(depth)==int or type(depth)==float or type(depth)==np.float64:
@@ -541,7 +540,7 @@ def generate_origins(nevents=100, radius=None, depth=-7.5):
 
     origins = np.array([x,y,z]).T
 
-    return origins, radius
+    return origins, disk_radius
 
 ##########################################################################
 # Extract the momenta and calculate unit vectors for the directions
@@ -615,14 +614,15 @@ def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model
 
 ##########################################################################
 # Developed with ChatGPT to project vector onto endcap plane
-def projection_length_on_plane_from_points(p1, p2, normal=(1.0, 0.0, 0.0)):
+def projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(0.0, 0.0, 1.0)):
+# def projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(1.0, 0.0, 0.0)):
     """
-    Vectorized: magnitude of the projection(s) of segments p1->p2 onto the plane with given normal.
+    Vectorized: magnitude of the projection(s) of segments detector_entry_pts->detector_exit_pts onto the plane with given normal.
 
     Parameters
     ----------
-    p1, p2 : array-like, shape (..., 3)
-        Each row (or last-dimension triple) is a 3D point. p1 and p2 must be broadcastable.
+    detector_entry_pts, detector_exit_pts : array-like, shape (..., 3)
+        Each row (or last-dimension triple) is a 3D point. detector_entry_pts and detector_exit_pts must be broadcastable.
     normal : array-like, shape (3,)
         Plane normal (need not be unit). The same normal is used for all rows.
 
@@ -631,37 +631,45 @@ def projection_length_on_plane_from_points(p1, p2, normal=(1.0, 0.0, 0.0)):
     lengths : ndarray, shape (...,)
         Magnitude(s) of the projected vector(s) onto the plane.
     """
-    p1 = np.asarray(p1, dtype=float)
-    p2 = np.asarray(p2, dtype=float)
-    n = np.asarray(normal, dtype=float)
-    n = n / np.linalg.norm(n)  # normalize
+    detector_entry_pts = np.asarray(detector_entry_pts, dtype=float)
+    detector_exit_pts = np.asarray(detector_exit_pts, dtype=float)
+    normal = np.asarray(normal, dtype=float)
+    normal = normal / np.linalg.norm(normal)  # normalize
 
-    v = p2 - p1                                    # (..., 3)
-    vmag = np.sqrt((v*v).sum(axis=1))
+    particle_direction = detector_exit_pts - detector_entry_pts                                    # (..., 3)
+    vmag = np.sqrt((particle_direction*particle_direction).sum(axis=1))
+    
+    print(f"[projection] number of segments = {particle_direction.shape[0]}")
+    print(f"[projection] particle_direction = detector_exit_pts - detector_entry_pts, first 3 rows:\n{particle_direction[:3]}")
+    print(f"[projection] |v| (full 3D magnitude), first 3: {vmag[:3]}")
 
-    v_dot_n = np.sum(v * n, axis=-1, keepdims=True)  # (..., 1)
-    v_plane = v - v_dot_n * n                      # (..., 3)
+    v_dot_n = np.sum(particle_direction * normal, axis=-1, keepdims=True)  # (..., 1)
+    v_plane = particle_direction - v_dot_n * normal                      # (..., 3)
+    proj_lengths = np.linalg.norm(v_plane, axis=-1)
+    print(f"[projection] v·n̂ (component along normal), first 3: {v_dot_n[:3].flatten()}")
+    print(f"[projection] v_plane (in-plane component), first 3 rows:\n{v_plane[:3]}")
+    print(f"[projection] |v_plane| (projected length), first 3: {proj_lengths[:3]}")
+    print(f"[projection] ratio |v_plane|/|v| (how much is in-plane), first 3: {(proj_lengths[:3] / vmag[:3])}")
 
+    return proj_lengths, vmag       # (...,)
 
-    return np.linalg.norm(v_plane, axis=-1), vmag       # (...,)
-
-def projection_length_on_cylinder_base(p1, p2):
+def projection_length_on_cylinder_base(detector_entry_pts, detector_exit_pts):
     """
     Specialized for cylinder bases perpendicular to x-axis.
     Equivalent to projecting onto any plane parallel to the end-caps.
     """
-    p1 = np.asarray(p1, dtype=float)
-    p2 = np.asarray(p2, dtype=float)
-    dy = p2[..., 1] - p1[..., 1]
-    dz = p2[..., 2] - p1[..., 2]
+    detector_entry_pts = np.asarray(detector_entry_pts, dtype=float)
+    detector_exit_pts = np.asarray(detector_exit_pts, dtype=float)
+    dy = detector_exit_pts[..., 1] - detector_entry_pts[..., 1]
+    dz = detector_exit_pts[..., 2] - detector_entry_pts[..., 2]
     return np.hypot(dy, dz)
 
 
 # Example
-#p1 = (-0.3, 0.2, -0.4)
-#p2 = ( 0.4, 0.6,  0.8)
-#print(projection_length_on_cylinder_base(p1, p2))                 # -> 1.264911064...
-#print(projection_length_on_plane_from_points(p1, p2))             # same result
+#detector_entry_pts = (-0.3, 0.2, -0.4)
+#detector_exit_pts = ( 0.4, 0.6,  0.8)
+#print(projection_length_on_cylinder_base(detector_entry_pts, detector_exit_pts))                 # -> 1.264911064...
+#print(projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts))             # same result
 
 ##########################################################################
 
