@@ -47,7 +47,8 @@ depths = [-10]
 #depths = [[-100,-200]]
 
 # When the radius is None, it calculates the radius based on an angle of 91 degrees
-disk_radii = [0, 40, 100, 500, 1000, None]
+#disk_radii = [0, 40, 100, 500, 1000, None]
+disk_radii = [1000]
 
 # Dark matter model
 # "floating" - unform direction for dark photon direction, but constrained to go "up"
@@ -107,7 +108,7 @@ for disk_radius in disk_radii:
     # This is useful when you only want to save events that hit the detector
     #ntrials = 1000
     # ntrials = 1
-    ntrials = 5
+    ntrials = 50
 
     # You might want to have more trials if you are very deep and have a low acceptance
     '''

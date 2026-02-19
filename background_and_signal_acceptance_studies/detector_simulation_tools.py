@@ -313,12 +313,11 @@ def invmass_cols(p4):
 ##########################################################################
 def opening_angle(p4s):
   p0mag = np.sqrt(p4s[0][0]**2 + p4s[0][1]**2 + p4s[0][2]**2)
-  detector_entry_ptsmag = np.sqrt(p4s[1][0]**2 + p4s[1][1]**2 + p4s[1][2]**2)
+  p1mag = np.sqrt(p4s[1][0]**2 + p4s[1][1]**2 + p4s[1][2]**2)
 
   dot_product = p4s[0][0]*p4s[1][0] + p4s[0][1]*p4s[1][1] + p4s[0][2]*p4s[1][2]
 
-  theta = np.arccos(dot_product/(p0mag*detector_entry_ptsmag))
-
+  theta = np.arccos(dot_product/(p0mag*p1mag))
   return theta
 
 
@@ -371,7 +370,7 @@ def draw_detector(pt0=[0, 0, -15], pt1=[0, 0, 15], length=7.5):
 # This code runs much faster though because I believe it is specialized for this
 # purpose while the skspatial tools seem to be more generalized. 
 def intersect_finite_cylinder_x_np(origins, directions,
-                                   radius=7.5, half_len=10.5, eps=1e-12):
+                                   radius=8, half_len=10.5, eps=1e-12):
     """
     Vectorized intersection of N rays with a finite cylinder along the x-axis.
 
@@ -390,9 +389,9 @@ def intersect_finite_cylinder_x_np(origins, directions,
 
     Returns
     -------
-    pts0, pts1 : each an (N,3) array
+    intersection_point0, intersection_point1 : each an (N,3) array
         The first and second intersection points.  If a ray has
-        <1 intersection, that row is NaN; if exactly 1, pts1 is NaN.
+        <1 intersection, that row is NaN; if exactly 1, intersection_point1 is NaN.
     """
     O = np.asarray(origins, dtype=float)
     D = np.asarray(directions, dtype=float)
@@ -453,10 +452,10 @@ def intersect_finite_cylinder_x_np(origins, directions,
     t1 = t_cand[np.arange(N), idx1]
 
     # --- recover 3D points; NaNs propagate automatically ---
-    P0 = O + t0[:,None] * D
-    detector_entry_pts = O + t1[:,None] * D
+    intersection_point0 = O + t0[:,None] * D
+    intersection_point1 = O + t1[:,None] * D
 
-    return P0, detector_entry_pts
+    return intersection_point0, intersection_point1
 
 ################################################################################
 ################################################################################
@@ -518,14 +517,14 @@ def generate_origins(nevents=100, disk_radius=None, depth=0):
             disk_radius = 6000
         
     print(f'Origin points will be uniformly scattered on a plane with a disk radius: {disk_radius} m')
-    origin_random = disk_radius*np.sqrt(np.random.random(nevents))
+    origin_radial_coord = disk_radius*np.sqrt(np.random.random(nevents))
 
     #x = origin_r*np.cos(origin_phi)
     #y = origin_r*np.sin(origin_phi)
     #z = None
     # Switch to CMS coordinates
-    x = origin_random*np.cos(origin_phi)
-    z = origin_random*np.sin(origin_phi)
+    x = origin_radial_coord*np.cos(origin_phi)
+    z = origin_radial_coord*np.sin(origin_phi)
     y = None
 
     if type(depth)==int or type(depth)==float or type(depth)==np.float64:
