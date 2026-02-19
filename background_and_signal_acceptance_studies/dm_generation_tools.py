@@ -372,12 +372,10 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, \
                          detector_radius=7.5, detector_half_len=10.5, 
                          inner_detector_radius=1.0, inner_detector_half_len=2.5, 
+                         disk_radius=None,  depth=-7.5, 
                          #radius=20, depth=-7.5, 
                          dm_model='floating', 
                          SAVE_ONLY_DETECTED=True, eloss_dict_name=None, 
-                         save_to_file=False, additional_tag="", output_directory=None, 
-                             disk_radius=None,  depth=-7.5, 
-                             SAVE_ONLY_DETECTED=True, eloss_dict_name=None, 
                              save_to_file=False, additional_tag="", output_directory=None, 
                          AVERAGE_ELOSS=False):
 
@@ -430,17 +428,15 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     #                                               radius=detector_radius, half_len=detector_half_len)
 
     # From Claude with CMS coordinates
-    pts0,pts1 = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
+    detector_entry_pts,detector_exit_pts = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
                                                    radius=detector_radius, half_length=detector_half_len)
-    #print(pts0)
 
     # Did it hit the inner detector
-    pts0_inner,pts1_inner = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
+    detector_entry_pts_inner,detector_exit_pts_inner = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
                                                    radius=inner_detector_radius, half_length=inner_detector_half_len)
-    #print(pts0)
     
-    hit_detector_idx = ~np.isnan(pts0.T[0])
-    hit_inner_detector_idx = ~np.isnan(pts0_inner.T[0])
+    hit_detector_idx = ~np.isnan(detector_entry_pts.T[0])
+    hit_inner_detector_idx = ~np.isnan(detector_entry_pts_inner.T[0])
 #=======
     ##detector_entry_pts,detector_exit_pts = dst.intersect_finite_cylinder_x_np(origins=origins, directions=1e6*directions1, \
             ##                                               radius=detector_radius, half_len=half_len)
@@ -480,13 +476,13 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     df_decays['ip_z1'] = detector_exit_pts.T[2]
 
     # Save the intersection points for the inner detector
-    df_decays['ip_inner_x0'] = pts0_inner.T[0]
-    df_decays['ip_inner_y0'] = pts0_inner.T[1]
-    df_decays['ip_inner_z0'] = pts0_inner.T[2]
+    df_decays['ip_inner_x0'] = detector_entry_pts_inner.T[0]
+    df_decays['ip_inner_y0'] = detector_entry_pts_inner.T[1]
+    df_decays['ip_inner_z0'] = detector_entry_pts_inner.T[2]
 
-    df_decays['ip_inner_x1'] = pts1_inner.T[0]
-    df_decays['ip_inner_y1'] = pts1_inner.T[1]
-    df_decays['ip_inner_z1'] = pts1_inner.T[2]
+    df_decays['ip_inner_x1'] = detector_exit_pts_inner.T[0]
+    df_decays['ip_inner_y1'] = detector_exit_pts_inner.T[1]
+    df_decays['ip_inner_z1'] = detector_exit_pts_inner.T[2]
 
     
 
