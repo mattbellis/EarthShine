@@ -499,7 +499,7 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
 
     if AVERAGE_ELOSS is False:
 
-        #'''
+        '''
         # Load the spline object from the file
         with open(eloss_dict_name, 'rb') as file_handle:
             loaded_eloss_dict = pickle.load(file_handle)
@@ -562,6 +562,12 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
             if efin<0:
                 efin = 0
             e_final_vals.append(efin)
+        '''
+
+        E_query = df_decays['e1']
+        d_query = df_decays['distance_to_detector']
+        e_final_vals = eloss_tools.calculate_eloss_from_geant_splines(E_query, d_query, eloss_dict_name='eloss_dictionary_11032025_v2.pkl')
+
 
     else:
         E_query = df_decays['e1']
@@ -581,7 +587,8 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     pts0 = np.array([df_decays['ip_x0'], df_decays['ip_y0'], df_decays['ip_z0']]).T 
     pts1 = np.array([df_decays['ip_x1'], df_decays['ip_y1'], df_decays['ip_z1']]).T 
 
-    projection,vmag = dst.projection_length_on_plane_from_points(pts0, pts1)    
+    #projection,vmag = dst.projection_length_on_plane_from_points(pts0, pts1)    
+    projection,vmag = dst.projection_length_on_plane_from_points(pts0, pts1, normal=(0.0, 0.0, 1.0))    
     #projection,vmag = dst.projection_length_on_plane_from_points(pts0[hit_detector_idx], pts1[hit_detector_idx])
 
     #print(projection)
