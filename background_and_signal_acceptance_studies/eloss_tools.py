@@ -302,3 +302,104 @@ def count_pairs(E_idx: np.ndarray, D_idx: np.ndarray):
     return uniq_arr, counts
 
 ##########################################################################
+##########################################################################
+def calculate_eloss_from_geant_splines(E_query, d_query, eloss_dict_name='eloss_dictionary_11032025_v2.pkl'):
+    #######################################################################
+    # Calculate eloss
+    #######################################################################
+
+    # New stuff with precomputed splines
+    start = time.time()
+
+    e_final_vals = None
+
+    # Allow someone to pass in a single number
+    # Is it iterable (list or array)
+    def is_iterable(obj):
+        try:
+            iter(obj)
+            return True
+        except TypeError:
+            return False
+
+    if is_iterable(E_query) is False:
+        E_query = pd.Series([E_query], dtype=float)
+    if is_iterable(d_query) is False:
+        d_query = pd.Series([d_query], dtype=float)
+
+
+
+    if type(E_query) == np.ndarray:
+        E_query = pd.Series(E_query)
+    if type(d_query) == np.ndarray:
+        d_query = pd.Series(d_query)
+
+    #'''
+    # Load the spline object from the file
+    with open(eloss_dict_name, 'rb') as file_handle:
+        loaded_eloss_dict = pickle.load(file_handle)
+    
+    #print(f'Time to read energy loss spline file is {time.time() - start} seconds')
+
+    lookup = RaggedSplineIndexLookup(loaded_eloss_dict)
+
+    ########### NEED TO DO THIS FOR BOTH MUONS!!!!!!!!! ######################
+    #E_query = 10000 + 2000*np.random.random(nvals)
+    #d_query = 1000*np.random.random(nvals)
+
+    #E_query = df_decays['e1']
+    #d_query = df_decays['distance_to_detector']
+
+    #print(d_query)
+    
+    E_idx, D_idx = lookup.get_indices(E_query, d_query)
+
+    print(f'Processing eloss for {len(E_query)} muons')
+    start = time.time()
+    
+    uniq, counts = count_pairs(E_idx, D_idx)    
+    print(f'{len(uniq)=}, {len(counts)=}, {sum(counts)=}')
+    
+    eloss_data = {}
+    for i,(u,c) in enumerate(zip(uniq, counts)):
+        #print(u,c)
+        if i%1000==0:
+            print(i)
+        ei,di = u
+        #di = u[1]
+        E_index = lookup.energy_keys[ei]
+        d_index = lookup.dist_keys[ei][di]
+        #print(u,c,E_index, d_index)
+        spl = loaded_eloss_dict[E_index][d_index]
+        de_vals = generate_data_from_spline(spl, c)
+        #print(de_vals)
+        #eloss_data[(E_index,d_index)] = de_vals
+        eloss_data[(ei,di)] = de_vals
+    
+    #print(f"Calculated all the uniq and counts")
+    
+    e_final_vals = []
+    de = -1
+    for i in range(len(E_query)):
+        ei = E_idx[i]
+        di = D_idx[i]
+        # CHECK THIS BUT I THINK di is -1 when the distance is greater than the 
+        # the max distance for that energy
+        de_vals = eloss_data[(ei,di)]#.pop()
+        #print(ei,di,de_vals)
+        if len(de_vals)>0 and di>-1:
+            de = de_vals.pop()
+        else:
+            # Make the delta E the same as the initial energy
+            de = E_query.iloc[i]
+        #print(i, len(E_query))
+        efin = E_query.iloc[i] - de
+        #print(E_query.iloc[i], di, de, efin)
+        if efin<0:
+            efin = 0
+        e_final_vals.append(efin)
+
+    return e_final_vals
+
+##########################################################################
+##########################################################################
