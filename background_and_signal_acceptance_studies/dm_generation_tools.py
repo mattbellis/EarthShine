@@ -620,7 +620,8 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     radius_tag = 'AD' # Angle dependent
     if radius is not None:
         radius_tag = f'{radius}'
-    average_eloss_tag = '' # Angle dependent
+
+    average_eloss_tag = '' 
     if AVERAGE_ELOSS is True:
         average_eloss_tag = f'_ave_eloss'
     tag = f'd_{depth_tag}_r_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dm_model_{dm_model}{detected_tag}{average_eloss_tag}{additional_tag}'
