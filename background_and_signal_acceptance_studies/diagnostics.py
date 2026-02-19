@@ -3,17 +3,16 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None):
+def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None):
 
     if input_directory is None:
         input_directory = './'
 
-    tag = f'd_{d}_r_{r}_{tag}'
+    tag = f'depth_{depth}_diskR_{diskR}_{tag}'
     if DETECTOR_Y_CONSTRAINED is not None:
-        out_tag = f'd_{d}_r_{r}_{tag}_DETECTOR_Y_CONSTRAINED_{DETECTOR_Y_CONSTRAINED}'
+        out_tag = f'depth_{depth}_diskR_{diskR}_{tag}_DETECTOR_Y_CONSTRAINED_{DETECTOR_Y_CONSTRAINED}'
     else:
-        out_tag = f'd_{d}_r_{r}_{tag}'
-
+        out_tag = f'depth_{depth}_diskR_{diskR}_{tag}'
         
     infile = f'{input_directory}/generated_data_{tag}.parquet'
     df_decays = pd.read_parquet(infile)
@@ -24,11 +23,11 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
     if masses is None:
         masses = df_decays['M_DM'].unique()
 
-    df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['z0']**2) 
-    df_decays['phi0_origin'] = np.arctan2(df_decays['z0'],df_decays['x0']) 
+    df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['y0']**2)
+    df_decays['phi0_origin'] = np.arctan2(df_decays['y0'],df_decays['x0'])
 
-    df_decays['p_pt_CMS'] = np.sqrt(df_decays['px1']**2 + df_decays['pz1']**2) 
-    df_decays['p_phi_CMS'] = np.arctan(df_decays['pz1'],df_decays['px1']) 
+    df_decays['p_pt_CMS'] = np.sqrt(df_decays['px1']**2 + df_decays['py1']**2)
+    df_decays['p_phi_CMS'] = np.arctan2(df_decays['py1'],df_decays['px1']) 
     df_decays['p_eta_CMS'] = 0.5*np.log((np.sqrt(df_decays['pmag1'])+df_decays['pz1'])/(np.sqrt(df_decays['pmag1'])-df_decays['pz1'])) 
 
 
@@ -124,7 +123,7 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
 
         plt.tight_layout()
 
-        outfile = f'origin_and_detector_entry_d_{r}_r_{r}_{out_tag}.png'
+        outfile = f'origin_{depth}_diskR_{diskR}_{out_tag}.png'
         plt.savefig(outfile)
         ########################################################################
 
@@ -202,13 +201,13 @@ def kinematic_diagnostic(d=-7.5, r=500, tag='mDM_200-10000_mA_0.22_dm_model_floa
         df_decays[filter]['pt1_detector_acceptance'].hist(bins=nbins, range=xranges,  histtype="step", density=True, linewidth=2.5, label='Ignoring eloss')
         df_decays[filter]['pt1_detector_acceptance_eloss'].hist(bins=nbins, range=xranges, histtype="step",density=True, linewidth=2.5,  label='With eloss')
         plt.xlabel(r'$p_{T}$ (GeV)', fontsize=14)
-        plt.ylim(1e-4)
+        plt.ylim(1e-5, 1e-2)
         plt.legend()
         plt.yscale('log')
         
         plt.tight_layout()
 
-        outfile = f'kinematic_d_{r}_r_{r}_{out_tag}.png'
+        outfile = f'kinematic_depth_{depth}_diskR_{diskR}_{out_tag}.png'
         plt.savefig(outfile)
 
     
