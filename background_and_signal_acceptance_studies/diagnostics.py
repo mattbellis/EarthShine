@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
-def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None):
+def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, \
+        INNER_DETECTOR_FILTER=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None):
 
     if input_directory is None:
         input_directory = './'
@@ -45,6 +46,10 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         if DETECTOR_Y_CONSTRAINED is not None:
             print(f"DETECTOR_Y_CONSTRAINED: {DETECTOR_Y_CONSTRAINED}")
             filter = filter & (df_decays['ip_y0']<DETECTOR_Y_CONSTRAINED)
+
+        if INNER_DETECTOR_FILTER:
+            print(f"Requiring that inner detector is hit")
+            filter = filter & (df_decays['hit_inner_detector'])
 
         print(f'After selections: {len(df_decays[filter])}')
 
@@ -104,6 +109,7 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
 
         #plt.figure(figsize=(8,3))
         
+        '''
         plt.subplot(3,3,7)
         df_decays[filter].plot.scatter(y='ip_y0', x='ip_x0', s=0.1, ax=plt.gca())
         plt.xlabel(r'Detector entry x (m)', fontsize=14)
@@ -120,6 +126,40 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         df_decays[filter].plot.scatter(y='ip_x0', x='ip_z0', s=0.1, ax=plt.gca())
         plt.xlabel(r'Detector entry z (m)', fontsize=14)
         plt.ylabel(r'Detector entry x (m)', fontsize=14)
+        '''
+        mask = (df_decays[filter]['hit_inner_detector'])
+
+        plt.subplot(3,3,7)
+        plt.gca().set_aspect('equal')
+        df_decays[filter].plot.scatter(x='ip_x0', y='ip_y0', s=1,  ax=plt.gca(), label='muon system')
+        df_decays[filter].plot.scatter(x='ip_inner_x0', y='ip_inner_y0', color='r', marker='s',s=1, ax=plt.gca(), label='inner tk')
+        df_decays[filter][mask].plot.scatter(x='ip_x0', y='ip_y0', color='k', s=20,  ax=plt.gca(), label='muon sys. when inner tk')
+        plt.legend()
+        plt.xlim(-9, 9)
+        plt.ylim(-9, 9)
+        plt.gca().set_xlabel('x (meters)', fontsize=14)
+        plt.gca().set_ylabel('y (meters)', fontsize=14)
+
+
+        plt.subplot(3,3,8)
+        plt.gca().set_aspect('equal')
+        df_decays[filter].plot.scatter(y='ip_x0', x='ip_z0', s=1,  ax=plt.gca(), label='muon system')
+        df_decays[filter].plot.scatter(y='ip_inner_x0', x='ip_inner_z0', color='r', marker='s',s=1, ax=plt.gca(), label='inner tk')
+        df_decays[filter][mask].plot.scatter(y='ip_x0', x='ip_z0', color='k', s=20,  ax=plt.gca(), label='muon sys. when inner tk')
+        plt.legend(loc='upper left')
+        plt.xlim(-20, 20)
+        plt.ylim(-20, 20)
+        plt.gca().set_ylabel('x (meters)', fontsize=14)
+        plt.gca().set_xlabel('z (meters)', fontsize=14)
+
+        plt.subplot(3,3,9)
+        plt.gca().set_aspect('equal')
+        plt.gca().hist2d(df_decays[filter][mask]['ip_z0'], df_decays[filter][mask]['ip_x0'], bins=100, range=([-20, 20], [-20, 20]), norm='log')
+        plt.xlim(-20, 20)
+        plt.ylim(-20, 20)
+        plt.xlabel('z (meters)', fontsize=14)
+        plt.ylabel('x (meters)', fontsize=14)
+    
 
         plt.tight_layout()
 
@@ -201,7 +241,7 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         df_decays[filter]['pt1_detector_acceptance'].hist(bins=nbins, range=xranges,  histtype="step", density=True, linewidth=2.5, label='Ignoring eloss')
         df_decays[filter]['pt1_detector_acceptance_eloss'].hist(bins=nbins, range=xranges, histtype="step",density=True, linewidth=2.5,  label='With eloss')
         plt.xlabel(r'$p_{T}$ (GeV)', fontsize=14)
-        plt.ylim(1e-5, 1e-2)
+        #plt.ylim(1e-5, 1e-2)
         plt.legend()
         plt.yscale('log')
         

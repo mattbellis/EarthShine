@@ -458,14 +458,9 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     df_decays['y0'] = origins.T[1]
     df_decays['z0'] = origins.T[2]
     
-    distance_to_detector = np.sqrt(df_decays['x0']*df_decays['x0'] + df_decays['y0']*df_decays['y0'] + df_decays['z0']*df_decays['z0'])
+    #distance_to_detector = np.sqrt(df_decays['x0']*df_decays['x0'] + df_decays['y0']*df_decays['y0'] + df_decays['z0']*df_decays['z0'])
+    #df_decays['distance_to_detector'] = distance_to_detector
     
-    df_decays['distance_to_detector'] = distance_to_detector
-    
-    #df_decays['px0'] = directions.T[0]
-    #df_decays['py0'] = directions.T[1]
-    #df_decays['pz0'] = directions.T[2]
-
     # Save the intersection points
     df_decays['ip_x0'] = detector_entry_pts.T[0]
     df_decays['ip_y0'] = detector_entry_pts.T[1]
@@ -484,6 +479,12 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     df_decays['ip_inner_y1'] = detector_exit_pts_inner.T[1]
     df_decays['ip_inner_z1'] = detector_exit_pts_inner.T[2]
 
+    dx = df_decays['x0']-df_decays['ip_x0']
+    dy = df_decays['y0']-df_decays['ip_y0']
+    dz = df_decays['z0']-df_decays['ip_z0']
+
+    distance_to_detector = np.sqrt(dx*dx + dy*dy + dz*dz)
+    df_decays['distance_to_detector'] = distance_to_detector
     
 
     #######################################################################
@@ -637,7 +638,7 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     if AVERAGE_ELOSS is True:
         average_eloss_tag = f'_ave_eloss'
 
-    tag = f'depth_{depth_tag}_diskR_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dmModel_{dm_model}_{detected_tag}_{average_eloss_tag}_{additional_tag}'
+    tag = f'depth_{depth_tag}_diskR_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dmModel_{dm_model}{detected_tag}{average_eloss_tag}{additional_tag}'
 
     # Do we write it all out to a file?
     if save_to_file:

@@ -71,7 +71,7 @@ def generate_data_from_spline(spl, npts):
     #print("Generating random points..........")
 
     # Use _x directly to avoid compatibility issues across scipy versions
-    min_val,max_val = spl._x[0],spl._x[-1]
+    min_val,max_val = spl.x[0],spl.x[-1]
 
     start = time.time()
     #npts = 5000
