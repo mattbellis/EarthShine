@@ -10,10 +10,15 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         input_directory = './'
 
     tag = f'depth_{depth}_diskR_{diskR}_{tag}'
+
     if DETECTOR_Y_CONSTRAINED is not None:
         out_tag = f'depth_{depth}_diskR_{diskR}_{tag}_DETECTOR_Y_CONSTRAINED_{DETECTOR_Y_CONSTRAINED}'
     else:
         out_tag = f'depth_{depth}_diskR_{diskR}_{tag}'
+
+    if INNER_DETECTOR_FILTER is True:
+        out_tag = f'{out_tag}_INN_TK_CONST'
+        
         
     infile = f'{input_directory}/generated_data_{tag}.parquet'
     df_decays = pd.read_parquet(infile)
