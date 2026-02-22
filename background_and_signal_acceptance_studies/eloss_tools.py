@@ -303,7 +303,7 @@ def count_pairs(E_idx: np.ndarray, D_idx: np.ndarray):
 
 ##########################################################################
 ##########################################################################
-def calculate_eloss_from_geant_splines(E_query, d_query, eloss_dict_name='eloss_dictionary_11032025_v2.pkl'):
+def calculate_eloss_from_geant_splines(E_query, d_query, eloss_dict_name='eloss_dictionary_11032025_v2.pkl', verbose=False):
     #######################################################################
     # Calculate eloss
     #######################################################################
@@ -354,11 +354,13 @@ def calculate_eloss_from_geant_splines(E_query, d_query, eloss_dict_name='eloss_
     
     E_idx, D_idx = lookup.get_indices(E_query, d_query)
 
-    print(f'Processing eloss for {len(E_query)} muons')
+    if verbose:
+        print(f'Processing eloss for {len(E_query)} muons')
     start = time.time()
     
     uniq, counts = count_pairs(E_idx, D_idx)    
-    print(f'{len(uniq)=}, {len(counts)=}, {sum(counts)=}')
+    if verbose:
+        print(f'{len(uniq)=}, {len(counts)=}, {sum(counts)=}')
     
     eloss_data = {}
     for i,(u,c) in enumerate(zip(uniq, counts)):

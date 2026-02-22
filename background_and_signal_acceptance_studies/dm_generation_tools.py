@@ -377,7 +377,7 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
                          dm_model='floating', 
                          SAVE_ONLY_DETECTED=True, eloss_dict_name=None, 
                              save_to_file=False, additional_tag="", output_directory=None, 
-                         AVERAGE_ELOSS=False):
+                         AVERAGE_ELOSS=False, verbose=False):
 
     #######################################################################
     # Create the output directory
@@ -449,7 +449,9 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     
     hit_detector_idx = ~np.isnan(detector_entry_pts.T[0])
     n_muons_hit = np.sum(hit_detector_idx)
-    print(f"Number of muons that struck the detector: {n_muons_hit} / {len(hit_detector_idx)} ({100*n_muons_hit/len(hit_detector_idx):.2f}%)")
+
+    if verbose:
+        print(f"Number of muons that struck the detector: {n_muons_hit} / {len(hit_detector_idx)} ({100*n_muons_hit/len(hit_detector_idx):.2f}%)")
 
     df_decays['hit_detector'] = hit_detector_idx
     df_decays['hit_inner_detector'] = hit_inner_detector_idx
@@ -492,13 +494,15 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     #######################################################################
     detected_tag = ""
     if SAVE_ONLY_DETECTED:
-        print("Saving only the tracks that strike the detector")
-        print(f"Initially dataframe is {df_decays.shape}")
+        if verbose:
+            print("\nSaving only the tracks that strike the detector")
+            print(f"Initially dataframe is {df_decays.shape}")
         filter = df_decays['hit_detector'] == True
         df_temp = df_decays[filter]
         del df_decays
         df_decays = df_temp
-        print(f"After only keeping some tracks, dataframe is {df_decays.shape}")
+        if verbose:
+            print(f"After only keeping some tracks, dataframe is {df_decays.shape}\n")
         detected_tag = "_HIT_DETECTOR"
         
     #######################################################################
@@ -579,7 +583,7 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
 
         E_query = df_decays['e1']
         d_query = df_decays['distance_to_detector']
-        e_final_vals = eloss_tools.calculate_eloss_from_geant_splines(E_query, d_query, eloss_dict_name='eloss_dictionary_11032025_v2.pkl')
+        e_final_vals = eloss_tools.calculate_eloss_from_geant_splines(E_query, d_query, eloss_dict_name='eloss_dictionary_11032025_v2.pkl', verbose=verbose)
 
 
     else:
@@ -588,7 +592,8 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
         e_final_vals = eloss_average.propagate_muon(E_query, d_query)
 
         
-    print(f'Time to calculate eloss for {len(E_query)} muons is {time.time() - start} seconds')
+    if verbose:
+        print(f'\nTime to calculate eloss for {len(E_query)} muons is {time.time() - start} seconds')
 
     df_decays['efinal_mu1'] = e_final_vals
 
@@ -600,7 +605,7 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     detector_entry_pts = np.array([df_decays['ip_x0'], df_decays['ip_y0'], df_decays['ip_z0']]).T 
     detector_exit_pts = np.array([df_decays['ip_x1'], df_decays['ip_y1'], df_decays['ip_z1']]).T 
 
-    projection,vmag = dst.projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(0.0, 0.0, 1.0))    
+    projection,vmag = dst.projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(0.0, 0.0, 1.0), verbose=verbose)    
     #projection,vmag = dst.projection_length_on_plane_from_points(detector_entry_pts[hit_detector_idx], detector_exit_pts[hit_detector_idx])
 
     #print(projection)

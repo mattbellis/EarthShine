@@ -613,7 +613,7 @@ def generate_origins_and_directions(nevents=100, radius=10, depth=-7.5, dm_model
 
 ##########################################################################
 # Developed with ChatGPT to project vector onto endcap plane
-def projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(0.0, 0.0, 1.0)):
+def projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(0.0, 0.0, 1.0), verbose=False):
 # def projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(1.0, 0.0, 0.0)):
     """
     Vectorized: magnitude of the projection(s) of segments detector_entry_pts->detector_exit_pts onto the plane with given normal.
@@ -638,17 +638,20 @@ def projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts
     particle_direction = detector_exit_pts - detector_entry_pts                                    # (..., 3)
     vmag = np.sqrt((particle_direction*particle_direction).sum(axis=1))
     
-    print(f"[projection] number of segments = {particle_direction.shape[0]}")
-    print(f"[projection] particle_direction = detector_exit_pts - detector_entry_pts, first 3 rows:\n{particle_direction[:3]}")
-    print(f"[projection] |v| (full 3D magnitude), first 3: {vmag[:3]}")
+    if verbose:
+        print(f"[projection] number of segments = {particle_direction.shape[0]}")
+        print(f"[projection] particle_direction = detector_exit_pts - detector_entry_pts, first 3 rows:\n{particle_direction[:3]}")
+        print(f"[projection] |v| (full 3D magnitude), first 3: {vmag[:3]}")
 
     v_dot_n = np.sum(particle_direction * normal, axis=-1, keepdims=True)  # (..., 1)
     v_plane = particle_direction - v_dot_n * normal                      # (..., 3)
     proj_lengths = np.linalg.norm(v_plane, axis=-1)
-    print(f"[projection] v·n̂ (component along normal), first 3: {v_dot_n[:3].flatten()}")
-    print(f"[projection] v_plane (in-plane component), first 3 rows:\n{v_plane[:3]}")
-    print(f"[projection] |v_plane| (projected length), first 3: {proj_lengths[:3]}")
-    print(f"[projection] ratio |v_plane|/|v| (how much is in-plane), first 3: {(proj_lengths[:3] / vmag[:3])}")
+
+    if verbose:
+        print(f"[projection] v·n̂ (component along normal), first 3: {v_dot_n[:3].flatten()}")
+        print(f"[projection] v_plane (in-plane component), first 3 rows:\n{v_plane[:3]}")
+        print(f"[projection] |v_plane| (projected length), first 3: {proj_lengths[:3]}")
+        print(f"[projection] ratio |v_plane|/|v| (how much is in-plane), first 3: {(proj_lengths[:3] / vmag[:3])}")
 
     return proj_lengths, vmag       # (...,)
 
