@@ -170,6 +170,7 @@ def propagate_muon(p_initial, distance_m,
     float or ndarray
         Final muon momentum in GeV/c (0 if muon stopped)
     """
+
     # Convert to energy
     E_initial = momentum_to_energy(p_initial)
     
@@ -182,6 +183,44 @@ def propagate_muon(p_initial, distance_m,
     # Convert back to momentum
     return energy_to_momentum(E_final)
 
+##########################################################################
+# Derived from CMSSW code
+# 
+# https://github.com/cms-sw/cmssw/blob/master/GeneratorInterface/CosmicMuonGenerator/src/SingleParticleEvent.cc#L232C1-L244C2
+#
+# Look at
+#
+# SingleParticleEvent
+#
+##########################################################################
+def propagate_muon_CMSSW(p_initial, distance_m,
+                   density: float = ROCK_DENSITY,
+                   ):
+
+    #double L10E = log10(E);
+    # parameters for standard rock (PDG 2004, page 230)
+    #double A = (1.91514 + 0.254957 * L10E) / 1000.;                              // a [GeV g^-1 cm^2]
+    #double B = (0.379763 + 1.69516 * L10E - 0.175026 * L10E * L10E) / 1000000.;  // b [g^-1 cm^2]
+    #double EPS = A / B;                                                          // epsilon [GeV]
+    #E = (E + EPS) * exp(-B * waterEquivalents) - EPS;
+
+    E = p_initial
+    #
+    # Water equivalent = distance (cm) * density (gm/c^3)
+    #
+    # distance comes in as meters so we need to convert to cm
+    #
+    waterEquivalents = (distance_m * 100) * ROCK_DENSITY
+
+    L10E = np.log10(E)
+    A = (1.91514 + 0.254957 * L10E) / 1000.;                              # a [GeV g^-1 cm^2]
+    B = (0.379763 + 1.69516 * L10E - 0.175026 * L10E * L10E) / 1000000.;  # b [g^-1 cm^2]
+    EPS = A / B;                                                          # epsilon [GeV]
+    E = (E + EPS) * np.exp(-B * waterEquivalents) - EPS;
+
+    return E
+
+##########################################################################
 
 def muon_range(p_initial, density: float = ROCK_DENSITY,
                a: float = A_IONIZATION, b: float = B_RADIATIVE):

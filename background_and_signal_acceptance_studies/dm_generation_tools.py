@@ -589,7 +589,8 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     else:
         E_query = df_decays['e1']
         d_query = df_decays['distance_to_detector']
-        e_final_vals = eloss_average.propagate_muon(E_query, d_query)
+        #e_final_vals = eloss_average.propagate_muon(E_query, d_query)
+        e_final_vals = eloss_average.propagate_muon_CMSSW(E_query, d_query)
 
         
     if verbose:
