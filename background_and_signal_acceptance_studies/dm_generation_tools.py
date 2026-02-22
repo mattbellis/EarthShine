@@ -1,15 +1,5 @@
 import numpy as np
 import pandas as pd
-import matplotlib.pylab as plt
-
-import seaborn as sns
-
-from skspatial.objects import Line, Plane
-from skspatial.plotting import plot_3d
-
-from skspatial.objects import Line, Cylinder, Point
-from skspatial.plotting import plot_3d
-
 import detector_simulation_tools as dst
 import eloss_tools
 
@@ -17,12 +7,8 @@ import eloss_average
 
 import phasespace
 
-import tensorflow
-
 import time
-
 import pickle
-
 import os
 
 ################################################################################
@@ -384,8 +370,12 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 ################################################################################
 
 def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, \
-                             radius=20, detector_radius=7.5, half_len=10.5, depth=-7.5, dm_model='floating', 
-                             SAVE_ONLY_DETECTED=True, eloss_dict_name=None, 
+                         detector_radius=7.5, detector_half_len=10.5, 
+                         inner_detector_radius=1.0, inner_detector_half_len=2.5, 
+                         disk_radius=None,  depth=-7.5, 
+                         #radius=20, depth=-7.5, 
+                         dm_model='floating', 
+                         SAVE_ONLY_DETECTED=True, eloss_dict_name=None, 
                              save_to_file=False, additional_tag="", output_directory=None, 
                          AVERAGE_ELOSS=False):
 
@@ -417,7 +407,7 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     nentries = len(df_decays)
 
     #origins, directions = dst.generate_origins_and_directions(nevents=nentries, radius=radius, depth=depth, dm_model=dm_model)
-    origins, radius = dst.generate_origins(nevents=nentries, radius=radius, depth=depth)
+    origins, disk_radius = dst.generate_origins(nevents=nentries, disk_radius=disk_radius, depth=depth)
 
     #print(origins)
     
@@ -432,47 +422,70 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     # is long enough to potentially intersect the detector
     # JUST DOING THIS FOR ONE MUON FOR NOW
     # NEED TO FIX THIS LATER
-    #pts0,pts1 = dst.intersect_finite_cylinder_x_np(origins=origins, directions=1e6*directions1)
+    #detector_entry_pts,detector_exit_pts = dst.intersect_finite_cylinder_x_np(origins=origins, directions=1e6*directions1)
     # For tracker
     #pts0,pts1 = dst.intersect_finite_cylinder_x_np(origins=origins, directions=1e6*directions1, \
-    #                                               radius=detector_radius, half_len=half_len)
+    #                                               radius=detector_radius, half_len=detector_half_len)
 
     # From Claude with CMS coordinates
-    pts0,pts1 = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
-                                                   radius=detector_radius, half_length=half_len)
-    #print(pts0)
+    detector_entry_pts,detector_exit_pts = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
+                                                   radius=detector_radius, half_length=detector_half_len)
+
+    # Did it hit the inner detector
+    detector_entry_pts_inner,detector_exit_pts_inner = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
+                                                   radius=inner_detector_radius, half_length=inner_detector_half_len)
     
-    hit_detector_idx = ~np.isnan(pts0.T[0])
+    hit_detector_idx = ~np.isnan(detector_entry_pts.T[0])
+    hit_inner_detector_idx = ~np.isnan(detector_entry_pts_inner.T[0])
+#=======
+    ##detector_entry_pts,detector_exit_pts = dst.intersect_finite_cylinder_x_np(origins=origins, directions=1e6*directions1, \
+            ##                                               radius=detector_radius, half_len=half_len)
+#
+    ## From Claude with CMS coordinates
+    #detector_entry_pts,detector_exit_pts = dst.ray_cylinder_intersection(origins=origins, directions=directions1, \
+            #radius=detector_radius, half_length=half_len)
+    ##print(detector_entry_pts)
+#>>>>>>> 6e6c78dba70c28c55320ef121e77eb13ef9c0833
     
+    hit_detector_idx = ~np.isnan(detector_entry_pts.T[0])
+    n_muons_hit = np.sum(hit_detector_idx)
+    print(f"Number of muons that struck the detector: {n_muons_hit} / {len(hit_detector_idx)} ({100*n_muons_hit/len(hit_detector_idx):.2f}%)")
+
     df_decays['hit_detector'] = hit_detector_idx
+    df_decays['hit_inner_detector'] = hit_inner_detector_idx
     
     df_decays['x0'] = origins.T[0]
     df_decays['y0'] = origins.T[1]
     df_decays['z0'] = origins.T[2]
     
-    distance_to_detector = np.sqrt(df_decays['x0']*df_decays['x0'] + df_decays['y0']*df_decays['y0'] + df_decays['z0']*df_decays['z0'])
+    #distance_to_detector = np.sqrt(df_decays['x0']*df_decays['x0'] + df_decays['y0']*df_decays['y0'] + df_decays['z0']*df_decays['z0'])
+    #df_decays['distance_to_detector'] = distance_to_detector
     
+    # Save the intersection points
+    df_decays['ip_x0'] = detector_entry_pts.T[0]
+    df_decays['ip_y0'] = detector_entry_pts.T[1]
+    df_decays['ip_z0'] = detector_entry_pts.T[2]
+
+    df_decays['ip_x1'] = detector_exit_pts.T[0]
+    df_decays['ip_y1'] = detector_exit_pts.T[1]
+    df_decays['ip_z1'] = detector_exit_pts.T[2]
+
+    # Save the intersection points for the inner detector
+    df_decays['ip_inner_x0'] = detector_entry_pts_inner.T[0]
+    df_decays['ip_inner_y0'] = detector_entry_pts_inner.T[1]
+    df_decays['ip_inner_z0'] = detector_entry_pts_inner.T[2]
+
+    df_decays['ip_inner_x1'] = detector_exit_pts_inner.T[0]
+    df_decays['ip_inner_y1'] = detector_exit_pts_inner.T[1]
+    df_decays['ip_inner_z1'] = detector_exit_pts_inner.T[2]
+
+    dx = df_decays['x0']-df_decays['ip_x0']
+    dy = df_decays['y0']-df_decays['ip_y0']
+    dz = df_decays['z0']-df_decays['ip_z0']
+
+    distance_to_detector = np.sqrt(dx*dx + dy*dy + dz*dz)
     df_decays['distance_to_detector'] = distance_to_detector
     
-    #df_decays['px0'] = directions.T[0]
-    #df_decays['py0'] = directions.T[1]
-    #df_decays['pz0'] = directions.T[2]
-
-    # Save the intersection points
-    df_decays['ip_x0'] = pts0.T[0]
-    df_decays['ip_y0'] = pts0.T[1]
-    df_decays['ip_z0'] = pts0.T[2]
-
-    df_decays['ip_x1'] = pts1.T[0]
-    df_decays['ip_y1'] = pts1.T[1]
-    df_decays['ip_z1'] = pts1.T[2]
-
-    # Did it
-    #px,py,pz = directions.T
-    #pmag = np.sqrt(px**2 + py**2 + pz**2)
-    #
-    #theta = np.arccos(pz/pmag)
-    #phi = np.arctan2(py, px)
 
     #######################################################################
     # Do we save only the ones that strike the detector?
@@ -584,12 +597,11 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     #######################################################################
     #pt = np.cos(theta) * df_decays['pmag1']
     # Get the intersection points back from the dataframe after reductions
-    pts0 = np.array([df_decays['ip_x0'], df_decays['ip_y0'], df_decays['ip_z0']]).T 
-    pts1 = np.array([df_decays['ip_x1'], df_decays['ip_y1'], df_decays['ip_z1']]).T 
+    detector_entry_pts = np.array([df_decays['ip_x0'], df_decays['ip_y0'], df_decays['ip_z0']]).T 
+    detector_exit_pts = np.array([df_decays['ip_x1'], df_decays['ip_y1'], df_decays['ip_z1']]).T 
 
-    #projection,vmag = dst.projection_length_on_plane_from_points(pts0, pts1)    
-    projection,vmag = dst.projection_length_on_plane_from_points(pts0, pts1, normal=(0.0, 0.0, 1.0))    
-    #projection,vmag = dst.projection_length_on_plane_from_points(pts0[hit_detector_idx], pts1[hit_detector_idx])
+    projection,vmag = dst.projection_length_on_plane_from_points(detector_entry_pts, detector_exit_pts, normal=(0.0, 0.0, 1.0))    
+    #projection,vmag = dst.projection_length_on_plane_from_points(detector_entry_pts[hit_detector_idx], detector_exit_pts[hit_detector_idx])
 
     #print(projection)
     #print(vmag)
@@ -618,12 +630,15 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     m_a_tag = dst.return_tag(MASSES_A)
 
     radius_tag = 'AD' # Angle dependent
-    if radius is not None:
-        radius_tag = f'{radius}'
-    average_eloss_tag = '' # Angle dependent
+    if disk_radius is not None:
+        radius_tag = f'{disk_radius}'
+
+    average_eloss_tag = '' 
+
     if AVERAGE_ELOSS is True:
         average_eloss_tag = f'_ave_eloss'
-    tag = f'd_{depth_tag}_r_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dm_model_{dm_model}{detected_tag}{average_eloss_tag}{additional_tag}'
+
+    tag = f'depth_{depth_tag}_diskR_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dmModel_{dm_model}{detected_tag}{average_eloss_tag}{additional_tag}'
 
     # Do we write it all out to a file?
     if save_to_file:
