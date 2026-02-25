@@ -492,7 +492,11 @@ def is_iterable(obj):
 ##########################################################################
 def return_tag(var):
     var_tag = ""
-    if type(var)==int or type(var)==float or type(var)==np.float64:
+    if type(var)==int:
+        var_tag = f'{var:d}'
+    elif type(var)==float or type(var)==np.float64:
+        var_tag = f'{var}'
+    elif type(var)==str:
         var_tag = f'{var}'
     elif is_iterable(var):
         if len(var)>1:

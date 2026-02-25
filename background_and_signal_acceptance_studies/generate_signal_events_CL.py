@@ -35,8 +35,8 @@ def parse_args():
                         help="Number of files to generate before merging (default: 3)")
     parser.add_argument("--detector-radius", type=float, default=7.5,
                         help="Detector radius (default: 7.5)")
-    parser.add_argument("--detector-half-len", type=float, default=10.5,
-                        help="Detector half-length (default: 10.5)")
+    parser.add_argument("--detector-half-len", type=float, default=15,
+                        help="Detector half-length (default: 15)")
     parser.add_argument("--inner-detector-radius", type=float, default=1.0,
                         help="Inner detector radius (default: 1.0)")
     parser.add_argument("--inner-detector-half-len", type=float, default=2.5,

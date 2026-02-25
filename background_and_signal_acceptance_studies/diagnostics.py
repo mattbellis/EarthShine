@@ -4,7 +4,7 @@ import matplotlib.pylab as plt
 
 
 def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, \
-        INNER_DETECTOR_FILTER=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None):
+        INNER_DETECTOR_FILTER=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None, CONSTRAIN_ENERGY=False):
 
     if input_directory is None:
         input_directory = './'
@@ -12,9 +12,9 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
     tag = f'depth_{depth}_diskR_{diskR}_{tag}'
 
     if DETECTOR_Y_CONSTRAINED is not None:
-        out_tag = f'depth_{depth}_diskR_{diskR}_{tag}_DETECTOR_Y_CONSTRAINED_{DETECTOR_Y_CONSTRAINED}'
+        out_tag = f'{tag}_DETECTOR_Y_CONSTRAINED_{DETECTOR_Y_CONSTRAINED}'
     else:
-        out_tag = f'depth_{depth}_diskR_{diskR}_{tag}'
+        out_tag = tag
 
     if INNER_DETECTOR_FILTER is True:
         out_tag = f'{out_tag}_INN_TK_CONST'
@@ -44,9 +44,11 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         filter = filter & (df_decays['M_DM']==mass)
         #filter = (df_decays['M_DM']==mass)
 
-        # For comparison, constrain energy of muons to be
+        # For comparison purposes, constrain energy of muons to be
         # close to 1/2 the mass of the DM
-        filter = filter & (np.abs(df_decays['e1']-mass/2)/mass < 0.01)
+        if CONSTRAIN_ENERGY:
+            print(f"CONSTRAIN_ENERGY: {CONSTRAIN_ENERGY}")
+            filter = filter & (np.abs(df_decays['e1']-mass/2)/mass < 0.01)
 
         if DETECTOR_Y_CONSTRAINED is not None:
             print(f"DETECTOR_Y_CONSTRAINED: {DETECTOR_Y_CONSTRAINED}")
@@ -61,18 +63,25 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         ########################################################################
         plt.figure(figsize=(12,12))
 
+        x = df_decays[filter]['x0']
+        y = df_decays[filter]['y0']
+        z = df_decays[filter]['z0']
+
         plt.subplot(3,3,1)
-        df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
+        #df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
+        plt.hist2d(x=x, y=y, bins=100, range=([-40, 40], [-2500,0]))
         plt.xlabel(r'Origin x (m)', fontsize=14)
         plt.ylabel(r'Origin y (m)', fontsize=14)
 
         plt.subplot(3,3,2)
-        df_decays[filter].plot.scatter(x='z0', y='y0', s=0.1, ax=plt.gca())
+        #df_decays[filter].plot.scatter(x='z0', y='y0', s=0.1, ax=plt.gca())
+        plt.hist2d(x=z, y=y, bins=100, range=([-40, 40], [-2500,0]))
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin y (m)', fontsize=14)
 
         plt.subplot(3,3,3)
-        df_decays[filter].plot.scatter(x='z0', y='x0', s=0.1, ax=plt.gca())
+        #df_decays[filter].plot.scatter(x='z0', y='x0', s=0.1, ax=plt.gca())
+        plt.hist2d(x=z, y=x, bins=100, range=([-40, 40], [-40,40]))
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin x (m)', fontsize=14)
         plt.xlim(-900,900)
@@ -134,6 +143,7 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         '''
         mask = (df_decays[filter]['hit_inner_detector'])
 
+        #'''
         plt.subplot(3,3,7)
         plt.gca().set_aspect('equal')
         df_decays[filter].plot.scatter(x='ip_x0', y='ip_y0', s=1,  ax=plt.gca(), label='muon system')
@@ -164,6 +174,7 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         plt.ylim(-20, 20)
         plt.xlabel('z (meters)', fontsize=14)
         plt.ylabel('x (meters)', fontsize=14)
+        #'''
     
 
         plt.tight_layout()
