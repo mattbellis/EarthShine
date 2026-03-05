@@ -69,19 +69,19 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
 
         plt.subplot(3,3,1)
         #df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
-        plt.hist2d(x=x, y=y, bins=100, range=([-40, 40], [-2500,0]))
+        plt.hist2d(x=x, y=y, bins=100, range=([-1*float(diskR), float(diskR)], [-2500,0]))
         plt.xlabel(r'Origin x (m)', fontsize=14)
         plt.ylabel(r'Origin y (m)', fontsize=14)
 
         plt.subplot(3,3,2)
         #df_decays[filter].plot.scatter(x='z0', y='y0', s=0.1, ax=plt.gca())
-        plt.hist2d(x=z, y=y, bins=100, range=([-40, 40], [-2500,0]))
+        plt.hist2d(x=z, y=y, bins=100, range=([-1*float(diskR), float(diskR)], [-2500,0]))
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin y (m)', fontsize=14)
 
         plt.subplot(3,3,3)
         #df_decays[filter].plot.scatter(x='z0', y='x0', s=0.1, ax=plt.gca())
-        plt.hist2d(x=z, y=x, bins=100, range=([-40, 40], [-40,40]))
+        plt.hist2d(x=z, y=x, bins=100, range=([-1*float(diskR), float(diskR)], [-1*float(diskR),float(diskR)]))
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin x (m)', fontsize=14)
         plt.xlim(-900,900)
