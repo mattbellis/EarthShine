@@ -1,1 +1,3 @@
-python submit_slurm_signal.py --masses-a 0.220 --masses-dm 7000 --nevents 10000000 --depth -3000 --dm-model momentum_constrained --save-to-file --output-directory OUTPUT_FILES --additional-tag TESTING --average-eloss
+python submit_slurm_signal.py --masses-a 0.220 --masses-dm 7000 --nevents 100000000 --depth -2000 --dm-model momentum_constrained --save-to-file --output-directory OUTPUT_FILES --additional-tag TESTING --average-eloss
+python submit_slurm_signal.py --masses-a 0.220 --masses-dm 7000 --nevents 100000000 --depth -3000 --dm-model momentum_constrained --save-to-file --output-directory OUTPUT_FILES --additional-tag TESTING --average-eloss
+python submit_slurm_signal.py --masses-a 0.220 --masses-dm 7000 --nevents 100000000 --depth -4000 --dm-model momentum_constrained --save-to-file --output-directory OUTPUT_FILES --additional-tag TESTING --average-eloss
