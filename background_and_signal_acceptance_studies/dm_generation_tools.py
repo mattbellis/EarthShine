@@ -204,18 +204,14 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
             boost_vector = np.array([0, pmag, 0, np.sqrt(pmag**2 + MASSES_A**2)])
             boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
 
-        elif dm_model=='floating':
+        elif dm_model=='floating' or dm_model=='momentum_constrained':
             # In the floating model, the decay of the dark photon is uniform
             # Generate in spherical coordinates
             # Generate theta from 0 to 1. This should constrain them to pointing up
-            #theta = np.arccos(np.random.random(nevents_to_generate))
-            #phi = np.pi*np.random.random(nevents_to_generate)# + np.pi # From pi to 2*pi
-            #r = pmag*np.ones(nevents_to_generate)
             
             # Claude
             cos_alpha = np.random.random(nevents_to_generate)#rng.uniform(0, 1, size=n)  # cos(alpha) in [0, 1] -> alpha in [0, pi/2]
             alpha = np.arccos(cos_alpha)           # angle from +y axis
-            #beta = rng.uniform(0, 2 * np.pi, size=n)  # rotation around y-axis
             beta = 2*np.pi*np.random.random(nevents_to_generate)
 
             # Unit direction vector
@@ -231,31 +227,20 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
             E = np.sqrt(pmag**2 + MASSES_A**2)*np.ones(nevents_to_generate)
             
-            # Convert to Cartesian for phasespace
-            #px = r*np.sin(theta)*np.cos(phi)
-            #py = r*np.sin(theta)*np.sin(phi)
-            #pz = r*np.cos(theta)
-            #print(r)
-            #print(E)
-            #px, py, pz, p, pt, theta, eta = dst.cms_to_cartesian(p=r, phi=phi, theta=theta)
-
             boost_vectors = np.array([px, py, pz, E]).T
-            # Switching this so that y is up
-            #boost_vectors = np.array([px, py, py, E]).T
-            #print(boost_vectors)
-
-            #boost_vector = np.array([0,0, pmag, np.sqrt(pmag**2 + MASSES_A**2)])
-            #boost_vectors = np.tile(boost_vector, (nevents_to_generate,1))
 
         # Generate a bunch of vectors of mass 0 assuming there is no boost from the photon. 
         # Instead, we get muons with fixed momentum of 1/2 DM_MASS
-        elif dm_model=='momentum_constrained':
+        #elif dm_model=='momentum_constrained':
 
+            '''
+            # This is just generating it so that the dark photon is at rest
             px = np.zeros(nevents_to_generate)
             py = np.zeros(nevents_to_generate)
             pz = np.zeros(nevents_to_generate)
             E = pmag*np.ones(nevents_to_generate)
             boost_vectors = np.array([px, py, pz, E]).T
+            '''
 
         else:
             print(f"Dark matter model '{dm_model}' has not been implemented!")
@@ -276,6 +261,23 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
         p0 = particles['p_0'][:].numpy().T
         p1 = particles['p_1'][:].numpy().T
+
+        # We want the magnitude of the momentum to be constrained to that of 
+        # 1/2 the DM mass
+        if dm_model=='momentum_constrained':
+            #print(p0)
+            pmag_temp = dst.mag(p0[0:3])
+            norm = (pmag/2)/pmag_temp
+            p0 *= norm
+
+            pmag_temp = dst.mag(p1[0:3])
+            norm = (pmag/2)/pmag_temp
+            p *= norm
+            #print()
+            #print(p0)
+            #pmag_temp = dst.mag(p0[0:3])
+            #print()
+            #print(pmag_temp)
 
         #data[MASSES_A][pmag] = [p0.T, p1.T]
         decays['M_DM'] += (pmag*np.ones(nevents_to_generate)).tolist()
