@@ -80,7 +80,7 @@ def main():
         args.depth = args.depth[0]
 
     for i in range(0,args.ntrials):
-        print(f'\nTrial {i} --------------------------------------------------------')
+        print(f'\nTrial {i} out of {args.ntrials} --------------------------------------------------------')
         print(f'Generate {args.nevents} events...')
 
         additional_tag=f'_{i:06d}',

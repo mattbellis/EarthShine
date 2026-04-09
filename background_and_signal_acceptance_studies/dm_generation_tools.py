@@ -272,7 +272,7 @@ def generate_dm_decays(MASSES_A=[.250,1,5], MASSES_DM=[10,100,1000], nevents_to_
 
             pmag_temp = dst.mag(p1[0:3])
             norm = (pmag/2)/pmag_temp
-            p *= norm
+            p1 *= norm
             #print()
             #print(p0)
             #pmag_temp = dst.mag(p0[0:3])

@@ -1,10 +1,24 @@
-python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 20000 \
-                                    --nevents 1_000_000 --ntrials 20 \
-                                    --depth -8 \
+python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 1000 10000 100000 500000 \
+                                    --depth -1000 \
                                     --save-to-file \
-                                    --output-directory OUTPUT_FILES
+                                    --output-directory OUTPUT_FILES \
                                     --average-eloss \
                                     --dm-model momentum_constrained  \
+                                    --ntrials 1000 \
+                                    --nevents 1_000_000
+                                    #--ntrials 20 \
+                                    #--nevents 1_000_000 
+
+#python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 20000 \
+                                    #--depth -8 \
+                                    #--save-to-file \
+                                    #--output-directory OUTPUT_FILES \
+                                    #--average-eloss \
+                                    #--dm-model momentum_constrained  \
+                                    #--ntrials 2 \
+                                    #--nevents 1_000_000
+                                    #--ntrials 20 \
+                                    #--nevents 1_000_000 
 
 #python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 20000 \
                                     #--nevents 1_000_000 --ntrials 20 \
