@@ -1,4 +1,5 @@
 import argparse
+import numpy as np
 #from dm_generation_tools import generate_many_events  # adjust this import
 
 import os
@@ -121,12 +122,19 @@ def main():
 
     # Merge them
     dfs = []
+    tot_nevents = 0
     for i,filename in enumerate(files):
       #print(filename)
-      dfs.append( pd.read_parquet(filename))
+      df_tmp =  pd.read_parquet(filename)
+      dfs.append( df_tmp )
+      tot_nevents += df_tmp['org_nevents'].iloc[0]
+      print(tot_nevents)
+
+
 
     print(f'\n Merging {len(dfs)} intermediate files...\n')
     df_decays = pd.concat(dfs)
+    df_decays['total_org_nevents'] = np.ones(len(df_decays), dtype=int) * int(tot_nevents)
     df_decays.to_parquet(f'{args.output_directory}/generated_data_{partial_tag}COMBINED.parquet')
 
     # Delete the intermediate dataframes to free up memory

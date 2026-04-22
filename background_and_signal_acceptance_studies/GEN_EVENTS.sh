@@ -1,11 +1,25 @@
-python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 1000 10000 100000 500000 \
-                                    --depth -1000 \
-                                    --save-to-file \
-                                    --output-directory OUTPUT_FILES \
-                                    --average-eloss \
-                                    --dm-model momentum_constrained  \
-                                    --ntrials 1000 \
-                                    --nevents 1_000_000
+for model in momentum_constrained core floating; do
+
+    #python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 1000 10000 100000 500000 \
+                    python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 10000 20000 30000 40000 50000 60000 70000 80000 90000 \
+                                        --depth -8 2000 --disk-radius 2000 \
+                                        --save-to-file \
+                                        --average-eloss \
+                                        --output-directory OUTPUT_FILES \
+                                        --dm-model $model  \
+                                        --ntrials 2000 \
+                                        --nevents 1_000_000
+
+done
+
+#python generate_signal_events_CL.py --masses-a 0.22 --masses-dm 1000 10000 100000 500000 \
+                                    #--depth -10 \
+                                    #--save-to-file \
+                                    #--output-directory OUTPUT_FILES \
+                                    #--average-eloss \
+                                    #--dm-model momentum_constrained  \
+                                    #--ntrials 2000 \
+                                    #--nevents 1_000_000
                                     #--ntrials 20 \
                                     #--nevents 1_000_000 
 

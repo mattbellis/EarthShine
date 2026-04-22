@@ -648,6 +648,10 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
 
     tag = f'depth_{depth_tag}_diskR_{radius_tag}_mDM_{m_dm_tag}_mA_{m_a_tag}_dmModel_{dm_model}{detected_tag}{average_eloss_tag}{additional_tag}'
 
+    # Add the original number of events to a column
+    # This is a bit wasteful, but avoids issues with backwards compatability for now
+    df_decays['org_nevents'] = np.ones(len(df_decays), dtype=int) * int(nevents_to_generate)
+
     # Do we write it all out to a file?
     if save_to_file:
         outfile = f'{output_directory}/generated_data_{tag}.parquet'

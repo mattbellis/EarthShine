@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib.pylab as plt
 
 
+##########################################################################
 def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, \
-        INNER_DETECTOR_FILTER=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None, CONSTRAIN_ENERGY=False):
+        INNER_DETECTOR_FILTER=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None, CONSTRAIN_ENERGY=False, \
+        plotdir='plots'):
 
     if input_directory is None:
         input_directory = './'
@@ -26,6 +28,8 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
     print(infile)
     print(df_decays.shape)
 
+    print('masses in file: ')
+    print(df_decays['M_DM'].unique())
     if masses is None:
         masses = df_decays['M_DM'].unique()
 
@@ -84,8 +88,8 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         plt.hist2d(x=z, y=x, bins=100, range=([-1*float(diskR), float(diskR)], [-1*float(diskR),float(diskR)]))
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin x (m)', fontsize=14)
-        plt.xlim(-900,900)
-        plt.ylim(-900,900)
+        #plt.xlim(-900,900)
+        #plt.ylim(-900,900)
 
         #########################################################################
         max_xval = 150
@@ -179,7 +183,7 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
 
         plt.tight_layout()
 
-        outfile = f'origin_{depth}_diskR_{diskR}_{out_tag}.png'
+        outfile = f'{plotdir}/origin_{depth}_diskR_{diskR}_{out_tag}.png'
         plt.savefig(outfile)
         ########################################################################
 
@@ -215,7 +219,8 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         ########################################################################
         #plt.figure(figsize=(12,4))
 
-        max_xval = 5000
+        #max_xval = 5000
+        max_xval = 1.1*mass/2
         min_xval = 0
         nbins = 50
         xranges = (min_xval, max_xval)
@@ -240,7 +245,8 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         ########################################################################
         #plt.figure(figsize=(12,4))
 
-        max_xval = 5000
+        #max_xval = 5000
+        max_xval = 1.1*mass/2
         min_xval = 0
         nbins = 50
         xranges = (min_xval, max_xval)
@@ -263,9 +269,233 @@ def kinematic_diagnostic(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_mode
         
         plt.tight_layout()
 
-        outfile = f'kinematic_depth_{depth}_diskR_{diskR}_{out_tag}.png'
+        outfile = f'{plotdir}/kinematic_depth_{depth}_diskR_{diskR}_{out_tag}.png'
         plt.savefig(outfile)
 
     
     return df_decays
 ##################################
+
+##########################################################################
+def origin_plots(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, \
+        INNER_DETECTOR_FILTER=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None, CONSTRAIN_ENERGY=False, \
+        plotdir='plots', xrange=None, yrange=None, zrange=None):
+
+    if input_directory is None:
+        input_directory = './'
+
+    tag = f'depth_{depth}_diskR_{diskR}_{tag}'
+
+    if DETECTOR_Y_CONSTRAINED is not None:
+        out_tag = f'{tag}_DETYCON_{DETECTOR_Y_CONSTRAINED}'
+    else:
+        out_tag = tag
+
+    if INNER_DETECTOR_FILTER is True:
+        out_tag = f'{out_tag}_INNCON'
+
+    out_tag = out_tag.replace('_HIT_DETECTOR','').replace('_COMBINED','')
+    out_tag = out_tag.replace('momentum_constrained','mom_con')
+        
+    infile = f'{input_directory}/generated_data_{tag}.parquet'
+    df_decays = pd.read_parquet(infile)
+
+    print(infile)
+    print(df_decays.shape)
+
+    print('masses in file: ')
+    print(df_decays['M_DM'].unique())
+    if masses is None:
+        masses = df_decays['M_DM'].unique()
+
+    df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['y0']**2)
+    df_decays['phi0_origin'] = np.arctan2(df_decays['y0'],df_decays['x0'])
+
+    df_decays['p_pt_CMS'] = np.sqrt(df_decays['px1']**2 + df_decays['py1']**2)
+    df_decays['p_phi_CMS'] = np.arctan2(df_decays['py1'],df_decays['px1']) 
+    df_decays['p_eta_CMS'] = 0.5*np.log((np.sqrt(df_decays['pmag1'])+df_decays['pz1'])/(np.sqrt(df_decays['pmag1'])-df_decays['pz1'])) 
+
+
+    for mass in masses:
+        #mass = 1000
+        
+        filter = (df_decays['efinal_mu1']>1)
+        filter = filter & (df_decays['M_DM']==mass)
+        #filter = (df_decays['M_DM']==mass)
+
+        # For comparison purposes, constrain energy of muons to be
+        # close to 1/2 the mass of the DM
+        if CONSTRAIN_ENERGY:
+            print(f"CONSTRAIN_ENERGY: {CONSTRAIN_ENERGY}")
+            filter = filter & (np.abs(df_decays['e1']-mass/2)/mass < 0.01)
+
+        if DETECTOR_Y_CONSTRAINED is not None:
+            print(f"DETECTOR_Y_CONSTRAINED: {DETECTOR_Y_CONSTRAINED}")
+            filter = filter & (df_decays['ip_y0']<DETECTOR_Y_CONSTRAINED)
+
+        if INNER_DETECTOR_FILTER:
+            print(f"Requiring that inner detector is hit")
+            filter = filter & (df_decays['hit_inner_detector'])
+
+        print(f'After selections: {len(df_decays[filter])}')
+
+        ########################################################################
+        plt.figure(figsize=(12,4))
+
+        x = df_decays[filter]['x0']
+        y = df_decays[filter]['y0']
+        z = df_decays[filter]['z0']
+
+        if xrange is None:
+            xrange=float(diskR)
+        if yrange is None:
+            yrange=1.1*(abs(float(depth)))
+        if zrange is None:
+            zrange=float(diskR)
+
+        print('Ranges...')
+        print(xrange, yrange, zrange)
+        print(type(xrange), type(yrange), type(zrange))
+
+        plt.subplot(1,3,1)
+        #df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
+        plt.hist2d(x=x, y=y, bins=50, range=([-1*xrange, xrange], [-yrange,0]), norm='log')
+        plt.xlabel(r'Origin x (m)', fontsize=14)
+        plt.ylabel(r'Origin y (m)', fontsize=14)
+        plt.colorbar(label='Counts')
+
+
+        plt.subplot(1,3,2)
+        #df_decays[filter].plot.scatter(x='z0', y='y0', s=0.1, ax=plt.gca())
+        plt.hist2d(x=z, y=y, bins=50, range=([-1*zrange, zrange], [-yrange,0]), norm='log')
+        plt.xlabel(r'Origin z (m)', fontsize=14)
+        plt.ylabel(r'Origin y (m)', fontsize=14)
+        plt.colorbar(label='Counts')
+
+        plt.subplot(1,3,3)
+        #df_decays[filter].plot.scatter(x='z0', y='x0', s=0.1, ax=plt.gca())
+        plt.hist2d(x=z, y=x, bins=50, range=([-1*zrange, zrange], [-1*xrange,xrange]), norm='log')
+        plt.xlabel(r'Origin z (m)', fontsize=14)
+        plt.ylabel(r'Origin x (m)', fontsize=14)
+        plt.colorbar(label='Counts')
+
+        dmstr = '{DM}'
+        title = f'$M_{dmstr}$={int(mass)}  depth={depth}  diskR={diskR}'
+        print(title)
+        plt.suptitle(title, fontsize=14)
+
+        plt.tight_layout()
+
+        outfile = f'{plotdir}/origin_mass_{mass}_{out_tag}.png'
+        plt.savefig(outfile)
+
+    return df_decays
+
+######################################################################################################
+##########################################################################
+def e_and_pt_plots(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floating', masses=None, position_only=False, \
+        INNER_DETECTOR_FILTER=False, input_directory=None, DETECTOR_Y_CONSTRAINED=None, CONSTRAIN_ENERGY=False, \
+        plotdir='plots', max_xval=None):
+
+    if input_directory is None:
+        input_directory = './'
+
+    tag = f'depth_{depth}_diskR_{diskR}_{tag}'
+
+    if DETECTOR_Y_CONSTRAINED is not None:
+        out_tag = f'{tag}_DETYCON_{DETECTOR_Y_CONSTRAINED}'
+    else:
+        out_tag = tag
+
+    if INNER_DETECTOR_FILTER is True:
+        out_tag = f'{out_tag}_INN_TK_CONST'
+        
+    out_tag = out_tag.replace('_HIT_DETECTOR','').replace('_COMBINED','')
+    out_tag = out_tag.replace('momentum_constrained','mom_con')
+        
+    infile = f'{input_directory}/generated_data_{tag}.parquet'
+    df_decays = pd.read_parquet(infile)
+
+    print(infile)
+    print(df_decays.shape)
+
+    print('masses in file: ')
+    print(df_decays['M_DM'].unique())
+    if masses is None:
+        masses = df_decays['M_DM'].unique()
+
+    df_decays['rho0_origin'] = np.sqrt(df_decays['x0']**2 + df_decays['y0']**2)
+    df_decays['phi0_origin'] = np.arctan2(df_decays['y0'],df_decays['x0'])
+
+    df_decays['p_pt_CMS'] = np.sqrt(df_decays['px1']**2 + df_decays['py1']**2)
+    df_decays['p_phi_CMS'] = np.arctan2(df_decays['py1'],df_decays['px1']) 
+    df_decays['p_eta_CMS'] = 0.5*np.log((np.sqrt(df_decays['pmag1'])+df_decays['pz1'])/(np.sqrt(df_decays['pmag1'])-df_decays['pz1'])) 
+
+
+    for mass in masses:
+        #mass = 1000
+        print(f'mass: {mass}')
+        
+        filter = (df_decays['efinal_mu1']>1)
+        filter = filter & (df_decays['M_DM']==mass)
+        #filter = (df_decays['M_DM']==mass)
+
+        # For comparison purposes, constrain energy of muons to be
+        # close to 1/2 the mass of the DM
+        if CONSTRAIN_ENERGY:
+            print(f"CONSTRAIN_ENERGY: {CONSTRAIN_ENERGY}")
+            filter = filter & (np.abs(df_decays['e1']-mass/2)/mass < 0.01)
+
+        if DETECTOR_Y_CONSTRAINED is not None:
+            print(f"DETECTOR_Y_CONSTRAINED: {DETECTOR_Y_CONSTRAINED}")
+            filter = filter & (df_decays['ip_y0']<DETECTOR_Y_CONSTRAINED)
+
+        if INNER_DETECTOR_FILTER:
+            print(f"Requiring that inner detector is hit")
+            filter = filter & (df_decays['hit_inner_detector'])
+
+        print(f'After selections: {len(df_decays[filter])}')
+
+        ########################################################################
+        plt.figure(figsize=(12,4))
+
+        min_xval = 0
+        nbins = 50
+        if max_xval is None:
+            xranges = (min_xval, 1.5*mass/2)
+
+        print('Ranges...')
+        print(max_xval)
+        print(type(max_xval))
+
+        dmstr = '{DM}'
+
+        plt.subplot(1,2,1)
+        df_decays[filter]['e1'].hist(bins=nbins, range=xranges, density=True,  histtype="step",linewidth=2.5, label='Orig. energy')
+        df_decays[filter]['efinal_mu1'].hist(bins=nbins, range=xranges, density=True, histtype="step",linewidth=2.5,  label='Energy at detector')
+        plt.xlabel(r'$E_{\mu}$ (GeV)', fontsize=14)
+        plt.legend()
+        plt.yscale('log')
+
+        plt.subplot(1,2,2)
+        df_decays[filter]['pt1_detector_acceptance'].hist(bins=nbins, range=xranges,  histtype="step", density=True, linewidth=2.5, label='Ignoring eloss')
+        df_decays[filter]['pt1_detector_acceptance_eloss'].hist(bins=nbins, range=xranges, histtype="step",density=True, linewidth=2.5,  label='With eloss')
+        plt.xlabel(r'$p_{T}$ (GeV)', fontsize=14)
+        plt.legend()
+        plt.yscale('log')
+
+        text = f'$M_{dmstr}$={int(mass)}\ndepth={depth}\ndiskR={diskR}'
+        plt.gca().text(0.7, 0.1, text,transform=plt.gca().transAxes)
+
+        title = f'$M_{dmstr}$={int(mass)}  depth={depth}  diskR={diskR}'
+        print(title)
+        plt.suptitle(title, fontsize=14)
+
+        plt.tight_layout()
+
+        outfile = f'{plotdir}/e_and_pt_mass_{mass}_{out_tag}.png'
+        plt.savefig(outfile)
+
+    return df_decays
+
+######################################################################################################

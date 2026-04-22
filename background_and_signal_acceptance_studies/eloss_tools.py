@@ -71,6 +71,12 @@ def generate_data_from_spline(spl, npts):
     #print("Generating random points..........")
 
     # Use _x directly to avoid compatibility issues across scipy versions
+    #print(type(spl))
+    #print(spl)
+    # Patch the missing method on the existing object
+    # Need to do this because of issues from the newer scipy and numpy
+    spl._asarray = np.asarray
+    
     min_val,max_val = spl.x[0],spl.x[-1]
 
     start = time.time()
