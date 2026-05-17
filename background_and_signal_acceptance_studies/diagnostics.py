@@ -353,13 +353,16 @@ def origin_plots(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floati
         if zrange is None:
             zrange=float(diskR)
 
-        print('Ranges...')
-        print(xrange, yrange, zrange)
-        print(type(xrange), type(yrange), type(zrange))
+        #print('Ranges...')
+        #print(xrange, yrange, zrange)
+        #print(type(xrange), type(yrange), type(zrange))
+
+        norm = None
+        #norm = 'log'
 
         plt.subplot(1,3,1)
         #df_decays[filter].plot.scatter(x='x0', y='y0', s=0.1, ax=plt.gca())
-        plt.hist2d(x=x, y=y, bins=50, range=([-1*xrange, xrange], [-yrange,0]), norm='log')
+        plt.hist2d(x=x, y=y, bins=50, range=([-1*xrange, xrange], [-yrange,0]), norm=norm)
         plt.xlabel(r'Origin x (m)', fontsize=14)
         plt.ylabel(r'Origin y (m)', fontsize=14)
         plt.colorbar(label='Counts')
@@ -367,14 +370,14 @@ def origin_plots(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floati
 
         plt.subplot(1,3,2)
         #df_decays[filter].plot.scatter(x='z0', y='y0', s=0.1, ax=plt.gca())
-        plt.hist2d(x=z, y=y, bins=50, range=([-1*zrange, zrange], [-yrange,0]), norm='log')
+        plt.hist2d(x=z, y=y, bins=50, range=([-1*zrange, zrange], [-yrange,0]), norm=norm)
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin y (m)', fontsize=14)
         plt.colorbar(label='Counts')
 
         plt.subplot(1,3,3)
         #df_decays[filter].plot.scatter(x='z0', y='x0', s=0.1, ax=plt.gca())
-        plt.hist2d(x=z, y=x, bins=50, range=([-1*zrange, zrange], [-1*xrange,xrange]), norm='log')
+        plt.hist2d(x=z, y=x, bins=50, range=([-1*zrange, zrange], [-1*xrange,xrange]), norm=norm)
         plt.xlabel(r'Origin z (m)', fontsize=14)
         plt.ylabel(r'Origin x (m)', fontsize=14)
         plt.colorbar(label='Counts')
@@ -387,6 +390,26 @@ def origin_plots(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floati
         plt.tight_layout()
 
         outfile = f'{plotdir}/origin_mass_{mass}_{out_tag}.png'
+        plt.savefig(outfile)
+
+        # ALSO DO PROJECTION
+        plt.figure(figsize=(12,4))
+
+        plt.subplot(1,2,1)
+        plt.hist(y,bins=100, range=(-yrange,0), density=True)
+        plt.xlabel('Depth (m)', fontsize=18)
+        plt.tight_layout()
+
+        plt.subplot(1,2,2)
+        #plt.hist(y,bins=100)
+        bins = np.logspace(np.log10(1), np.log10(4000), 34)
+        plt.hist(-y,bins=bins, density=True)
+        plt.xscale('log')
+
+        plt.xlabel('Depth (m) [ZOOMED IN]', fontsize=18)
+        plt.tight_layout()
+
+        outfile = f'{plotdir}/origin_depth_1D_mass_{mass}_{out_tag}.png'
         plt.savefig(outfile)
 
     return df_decays
