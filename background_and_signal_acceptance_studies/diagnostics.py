@@ -316,6 +316,8 @@ def origin_plots(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floati
     df_decays['p_eta_CMS'] = 0.5*np.log((np.sqrt(df_decays['pmag1'])+df_decays['pz1'])/(np.sqrt(df_decays['pmag1'])-df_decays['pz1'])) 
 
 
+    dict_hist = {}
+
     for mass in masses:
         #mass = 1000
         
@@ -403,14 +405,22 @@ def origin_plots(depth=-8, diskR=500, tag='mDM_200-10000_mA_0.22_dm_model_floati
         plt.subplot(1,2,2)
         #plt.hist(y,bins=100)
         bins = np.logspace(np.log10(1), np.log10(4000), 34)
-        plt.hist(-y,bins=bins, density=True)
+        counts, bin_edges, _ = plt.hist(-y,bins=bins, density=True)
         plt.xscale('log')
+
+        dict_hist[f'{mass:d} bin_start'] =  bin_edges[:-1]
+        dict_hist[f'{mass:d} count'] = counts 
 
         plt.xlabel('Depth (m) [ZOOMED IN]', fontsize=18)
         plt.tight_layout()
 
         outfile = f'{plotdir}/origin_depth_1D_mass_{mass}_{out_tag}.png'
         plt.savefig(outfile)
+
+    df_hist = pd.DataFrame.from_dict(dict_hist)
+    outfile = f'HISTOGRAM_FILES_FOR_RATES/dist_from_depths_at_detector_masses_{masses[0]}_{masses[-1]}_{out_tag}.parquet'
+    print(f'Saving file to {outfile}')
+    df_hist.to_parquet(outfile)
 
     return df_decays
 
