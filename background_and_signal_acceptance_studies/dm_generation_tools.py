@@ -660,7 +660,7 @@ def generate_many_events(MASSES_A=[1], MASSES_DM=[100], nevents_to_generate=10, 
     ##########################################################################
 
 
-    return df_decays, tag
+    return df_decays, tag, disk_radius
 
 
 
