@@ -338,6 +338,59 @@ def select(catalog, **filters):
     return sel
 
 
+##########################################################################
+
+def _read_parquet_filtered(path, columns=None, masses=None):
+    """pd.read_parquet with optional row filtering on M_DM pushed down to
+    the parquet reader -- rows for other masses are never materialized,
+    which is the difference between loading 60M rows and 7M.
+
+    Requested columns absent from the file's schema (e.g. older files
+    predating a new column) are skipped with a warning rather than
+    failing the read."""
+    kw = {}
+    if columns is not None:
+        have = set(pq.read_schema(path).names)
+        missing = [c for c in columns if c not in have]
+        if missing:
+            print(f"note: {Path(path).name} lacks requested column(s) "
+                  f"{missing}; loading the rest")
+        kw["columns"] = [c for c in columns if c in have]
+    if masses is not None:
+        kw["filters"] = [("M_DM", "in", [float(m) for m in masses])]
+    return pd.read_parquet(path, **kw)
+
+##########################################################################
+
+def load(catalog, columns=None, masses=None, **filters):
+    """Load exactly one dataset matching filters.
+
+    Returns (df, params) where params is the full footer dict of that file.
+    Raises with a helpful listing if 0 or >1 files match.
+
+    Memory control for large files:
+      columns=[...]  read only these columns (parquet is columnar; unread
+                     columns cost nothing).  See diagnostics_v2.columns_for()
+                     for per-plot-function column sets.
+      masses=[...]   read only rows with M_DM in this list, filtered inside
+                     the parquet reader before rows are materialized.
+    """
+    sel = select(catalog, **filters)
+    if len(sel) != 1:
+        show_cols = [c for c in
+                     ("path", "stage", "dm_model", "mA_min", "mDM_min",
+                      "mDM_max", "depth_min", "depth_max", "disk_radius",
+                      "eloss", "selection") if c in sel.columns]
+        raise ValueError(
+            f"{len(sel)} catalog entries match {filters}; need exactly 1.\n"
+            f"{sel[show_cols].to_string() if len(sel) else '(no matches)'}"
+        )
+    path = sel.iloc[0]["path"]
+    df = _read_parquet_filtered(path, columns=columns, masses=masses)
+    return df, read_params(path)
+
+##########################################################################
+'''
 def load(catalog, columns=None, **filters):
     """Load exactly one dataset matching filters.
 
@@ -357,8 +410,37 @@ def load(catalog, columns=None, **filters):
     path = sel.iloc[0]["path"]
     df = pd.read_parquet(path, columns=columns)
     return df, read_params(path)
+'''
+##########################################################################
+##########################################################################
 
+def load_many(catalog, columns=None, masses=None, **filters):
+    """Load and concat all datasets matching filters.
+    Returns (df, list_of_params).  Adds a 'source_path' column.
 
+    columns= and masses= behave as in load() (read-time pruning).
+
+    For plotting/tagging a merged multi-run dataset, collapse the params
+    list with merge_params():
+
+        df, plist = load_many(cat, dm_model="core", stage="combined")
+        params = merge_params(plist)
+    """
+    sel = select(catalog, **filters)
+    if len(sel) == 0:
+        raise ValueError(f"no catalog entries match {filters}")
+    dfs, plist = [], []
+    for path in sel["path"]:
+        d = _read_parquet_filtered(path, columns=columns, masses=masses)
+        d["source_path"] = path
+        dfs.append(d)
+        plist.append(read_params(path))
+    return pd.concat(dfs, ignore_index=True), plist
+
+##########################################################################
+##########################################################################
+
+'''
 def load_many(catalog, columns=None, **filters):
     """Load and concat all datasets matching filters.
     Returns (df, list_of_params).  Adds a 'source_path' column.
@@ -379,6 +461,7 @@ def load_many(catalog, columns=None, **filters):
         dfs.append(d)
         plist.append(read_params(path))
     return pd.concat(dfs, ignore_index=True), plist
+'''
 
 
 def merge_params(plist):
@@ -559,6 +642,100 @@ def save_figure(fig, stem, params, sel_params=None, plotdir="plots", dpi=150):
     with open(out.with_suffix(".json"), "w") as f:
         json.dump(sidecar, f, indent=2, default=str)
     return out
+
+
+# ----------------------------------------------------------------------------
+# unique parameter combinations
+# ----------------------------------------------------------------------------
+# shorthand names that expand to their min/max column pairs in combos()
+_COMBO_GROUPS = {
+    "depth": ("depth_min", "depth_max"),
+    "mDM": ("mDM_min", "mDM_max"),
+    "mA": ("mA_min", "mA_max"),
+}
+
+# a sensible default "run matrix" view
+_COMBO_DEFAULT_FIELDS = ("dm_model", "mA", "mDM", "depth", "disk_radius")
+
+
+def combos(catalog_or_root="data", *fields, **filters):
+    """Unique combinations of the named parameter fields, with per-combo
+    aggregates: n_files, total n_generated (exposure), total n_rows.
+
+    fields may be raw catalog columns ("dm_model", "disk_radius", "run_id",
+    ...) or the shorthands "depth", "mDM", "mA", which expand to their
+    min/max pairs and also get a collapsed display column ('-1000 (disc)'
+    vs '[-4000, -8]').  With no fields, shows the full run matrix
+    (dm_model x mA x mDM x depth x disk_radius).
+
+    Keyword args are equality filters, same as select()/summary().
+
+    Examples:
+        eio.combos(cat, "mDM", dm_model="core")
+        eio.combos(cat, "depth", "mDM", dm_model="core", stage="combined")
+        eio.combos("data")                      # the whole run matrix
+        eio.combos(cat, "depth", "run_id", dm_model="core")
+
+    Returns a plain dataframe -- chain further with .query()/.sort_values()
+    as needed.
+    """
+    if isinstance(catalog_or_root, (str, Path)):
+        cat = read_catalog(catalog_or_root)
+    else:
+        cat = catalog_or_root
+    if len(cat) == 0:
+        print("catalog is empty")
+        return cat
+
+    sel = select(cat, **filters) if filters else cat
+    if len(sel) == 0:
+        print(f"no catalog entries match {filters}")
+        return sel
+
+    if not fields:
+        fields = _COMBO_DEFAULT_FIELDS
+
+    group_cols, display_pairs = [], []
+    for f in fields:
+        if f in _COMBO_GROUPS:
+            lo, hi = _COMBO_GROUPS[f]
+            for c in (lo, hi):
+                if c not in sel.columns:
+                    raise KeyError(f"catalog has no column {c!r}")
+                if c not in group_cols:
+                    group_cols.append(c)
+            display_pairs.append((f, lo, hi))
+        elif f in sel.columns:
+            if f not in group_cols:
+                group_cols.append(f)
+        else:
+            raise KeyError(
+                f"{f!r} is neither a combo shorthand "
+                f"({sorted(_COMBO_GROUPS)}) nor a catalog column.  "
+                f"Columns: {sorted(sel.columns)}")
+
+    agg = {"n_files": ("path", "count")}
+    if "n_generated" in sel.columns:
+        agg["n_generated"] = ("n_generated", "sum")
+    if "n_rows" in sel.columns:
+        agg["n_rows"] = ("n_rows", "sum")
+
+    out = (sel.groupby(group_cols, dropna=False)
+              .agg(**agg)
+              .reset_index()
+              .sort_values(group_cols)
+              .reset_index(drop=True))
+
+    # collapsed display columns for the min/max shorthands, shown first
+    front = []
+    for name, lo, hi in display_pairs:
+        disc = " (disc)" if name == "depth" else ""
+        out[name] = [_fmt_range(a, b, disc_label=disc)
+                     for a, b in zip(out[lo], out[hi])]
+        front.append(name)
+    rest = [c for c in out.columns if c not in front]
+    return out[front + rest]
+
 
 
 # ----------------------------------------------------------------------------

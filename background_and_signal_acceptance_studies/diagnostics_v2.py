@@ -269,6 +269,9 @@ def kinematic_diagnostic(df, params, masses=None,
         plt.xlabel('z (meters)', fontsize=14)
         plt.ylabel('x (meters)', fontsize=14)
 
+        title = _figure_title(params, mass)
+        plt.suptitle(title, fontsize=14)
+        
         plt.tight_layout()
         out = eio.save_figure(fig, "origin_entry", params, sel,
                               plotdir=plotdir)
