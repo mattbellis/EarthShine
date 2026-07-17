@@ -1,5 +1,8 @@
+#NEVENTS=1_000_000
+#NTRIALS=500
+
 NEVENTS=1_000_000
-NTRIALS=500
+NTRIALS=5
 
 for model in floating; do
 
@@ -53,7 +56,7 @@ for model in floating; do
 
 done
 
-NEVENTS=1_000_000
+NEVENTS=10_000
 NTRIALS=10
 
 for model in core; do
