@@ -8,9 +8,9 @@ for model in "floating"; do
     echo $NTRIALS
 
     python generate_signal_events_CL_v2.py \
-        --masses-a 0.22 --masses-dm 10000 20000 30000 40000 50000 60000 70000 80000 90000  \
-        --depth -8 -6000 \
-        --disk-radius 6000 \
+        --masses-a 0.22 --masses-dm 10 20 30 40 50 60 70 80 90  \
+        --depth -8 -4000 \
+        --disk-radius 4000 \
         --save-to-file --average-eloss \
         --output-directory OUTPUT_FILES \
         --data-root data \
