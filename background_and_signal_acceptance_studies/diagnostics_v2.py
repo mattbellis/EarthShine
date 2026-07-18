@@ -355,6 +355,81 @@ def kinematic_diagnostic(df, params, masses=None,
 
 
 ##########################################################################
+def opening_angle_plots(df, params, masses=None,
+                        inner_detector=False, detector_y_max=None,
+                        constrain_energy=False, min_efinal=1.0,
+                        plotdir='plots',
+                        opening_angle_max=1e-2, sep_max=30.0):
+    """Di-muon opening angle + separation-at-detector figure, one per mass.
+
+    Port of opening_angle_plots() from
+    PROTOTYPING_signal_kinematics_diagnostics_Matt.ipynb into the v2
+    convention (df, params, selection kwargs, save_figure).
+
+    Left panel:  the 'opening angle' column (degrees) between the two
+    muons.  Right panel: the transverse separation of the muon PAIR at the
+    detector, opening_angle x distance_to_detector, in mm.
+
+    NOTE: do NOT use ip_*0 / ip_*1 for this -- those are the ENTRY and EXIT
+    points of a SINGLE muon through the detector cylinder (see
+    detector_simulation_tools.line_cylinder_intersection: both are O + t*D
+    on the same ray), so their distance is that muon's path length through
+    the detector (~detector size, and inclination-dependent), not the
+    two-muon separation.  The physical pair separation is the small-angle
+    projection opening_angle x flight distance, as the prototype used.
+    opening_angle_max / sep_max set the histogram ranges (mm).
+    """
+    params = eio.as_params(params)   # accept dict or load_many list
+    df = eio.derive_columns(df)
+
+    # transverse muon-pair separation at the detector (deg -> rad, m -> mm)
+    df = df.copy()
+    df['sep'] = (np.deg2rad(df['opening angle'])
+                 * df['distance_to_detector'] * 1000.0)
+
+    print(f"dataset: {eio.tag(params)}")
+    print(f"shape:   {df.shape}")
+    print(f"masses in file: {sorted(df['M_DM'].unique())}")
+    if masses is None:
+        masses = sorted(df['M_DM'].unique())
+
+    figs = []
+    for mass in masses:
+        mask, sel = eio.apply_selection(
+            df, mass=mass, min_efinal=min_efinal,
+            inner_detector=inner_detector,
+            detector_y_max=detector_y_max,
+            constrain_energy=constrain_energy,
+        )
+        d = df[mask]
+        print(f"M_DM = {mass}:  {len(d)} events after selection")
+
+        fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+
+        plt.sca(axes[0])
+        d['opening angle'].hist(bins=50, range=(0, opening_angle_max),
+                                histtype="step", density=True,
+                                linewidth=2.5)
+        plt.xlabel('Opening angle (degrees)', fontsize=14)
+
+        plt.sca(axes[1])
+        d['sep'].hist(bins=50, range=(0, sep_max), density=True,
+                      histtype="step", linewidth=2.5)
+        plt.xlabel(r'Separation (mm)', fontsize=14)
+        plt.yscale('log')
+
+        plt.suptitle(_figure_title(params, mass), fontsize=14)
+        plt.tight_layout()
+
+        out = eio.save_figure(fig, "opening_angle", params, sel,
+                              plotdir=plotdir)
+        print(f"  -> {out}")
+        figs.append(fig)
+
+    return df, figs
+
+
+##########################################################################
 def origin_plots(df, params, masses=None,
                  inner_detector=False, detector_y_max=None,
                  constrain_energy=False, min_efinal=1.0,
