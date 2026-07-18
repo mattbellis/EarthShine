@@ -617,19 +617,29 @@ def selection_tag(sel_params):
 # ----------------------------------------------------------------------------
 # figures:  name from the same params that selected the data + JSON sidecar
 # ----------------------------------------------------------------------------
-def figure_name(stem, params, sel_params=None, ext="png"):
+# default file format for saved figures; override globally with e.g.
+#   eio.DEFAULT_FIG_EXT = "pdf"
+# so the diagnostics functions (which call save_figure without an ext) emit
+# vector PDFs instead of PNGs without touching their signatures.
+DEFAULT_FIG_EXT = "png"
+
+
+def figure_name(stem, params, sel_params=None, ext=None):
+    ext = ext or DEFAULT_FIG_EXT
     t = tag(params)
     st = selection_tag(sel_params) if sel_params else ""
     name = f"{stem}_{t}" + (f"_{st}" if st else "")
     return f"{name}.{ext}"
 
 
-def save_figure(fig, stem, params, sel_params=None, plotdir="plots", dpi=150):
-    """Save fig as <plotdir>/<stem>_<tag>[_<seltag>].png plus a .json sidecar
-    recording the full provenance (params, cuts, source file, time)."""
+def save_figure(fig, stem, params, sel_params=None, plotdir="plots", dpi=150,
+                ext=None):
+    """Save fig as <plotdir>/<stem>_<tag>[_<seltag>].<ext> plus a .json sidecar
+    recording the full provenance (params, cuts, source file, time).  ext
+    defaults to DEFAULT_FIG_EXT ('png' unless overridden globally)."""
     plotdir = Path(plotdir)
     plotdir.mkdir(parents=True, exist_ok=True)
-    name = figure_name(stem, params, sel_params)
+    name = figure_name(stem, params, sel_params, ext=ext)
     out = plotdir / name
     fig.savefig(out, dpi=dpi)
 
