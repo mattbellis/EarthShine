@@ -136,6 +136,10 @@ def eptang_overlay_panels(cat, mass, outdir):
     consistent with the other signal figures. For the energy and pT panels
     colour encodes the stage: at generation vs at the detector (after energy
     loss in the rock)."""
+
+    # For displaying in a Jupyter notebook
+    figs,axes=[],[]
+
     model_ls = {"core": "-", "floating": "--"}
     # this figure is a single mass -> reuse that mass's colour (green for
     # 10 TeV) for the nominal/at-generation curves so it matches the mass-coded
@@ -169,6 +173,8 @@ def eptang_overlay_panels(cat, mass, outdir):
         _finish(ax, xlabel, logy=logy, legend=True)
         _save(fig, outdir, f"eptang_{tag}")
 
+        figs.append(fig), axes.append(ax)
+
     # --- energy / pT panels: model = line style, stage = colour --------------
     twolayer = [(("e1", "efinal_mu1"), r'Muon energy $E_{\mu}$ [GeV]', "E"),
                 (("pt1_detector_acceptance", "pt1_detector_acceptance_eloss"),
@@ -191,7 +197,9 @@ def eptang_overlay_panels(cat, mass, outdir):
                           label="At detector")]
         ax.legend(handles=model_h + stage_h)
         _save(fig, outdir, f"eptang_{tag}")
+        figs.append(fig), axes.append(ax)
 
+    return figs,axes
 
 # ------------------------------------------------------------ openAngleSep
 def openanglesep_panels(df, mass, prefix, outdir,
@@ -224,6 +232,7 @@ def openanglesep_overlay_panels(cat, masses, outdir):
     masses.  Colour encodes the mass; line style encodes the production model
     (core = solid, floating = dashed).  The opening angle scales as ~1/E, so
     the distributions span decades across masses -> use log x-axes."""
+    figs,axes = [],[]
     model_ls = {"core": "-", "floating": "--"}
     # gather selected data for every (mass, model) present in the catalog
     data = {}
@@ -263,9 +272,12 @@ def openanglesep_overlay_panels(cat, masses, outdir):
         _finish(ax, xlabel, logy=True, logx=True)
         _save(fig, outdir, name)
 
+        figs.append(fig), axes.append(ax)
+
     _panel_for('opening angle', r'Opening angle [deg]', "openAngleSep_angle")
     _panel_for('sep', r'Muon separation at detector [mm]', "openAngleSep_sep")
 
+    return figs,axes
 
 # ------------------------------------------------------------ density depth
 def density_panels(df, mass, prefix, outdir):
@@ -301,9 +313,13 @@ MASS_COLOR = {100.0: "#9467bd", 1000.0: "#1f77b4", 10000.0: "#2ca02c",
 def density_overlay_panels(cat, masses, outdir):
     """Consolidated decay-depth figure: all DM masses overlaid on a single
     linear panel and a single log panel (colour encodes the DM mass)."""
+
+    figs,axes = [],[]
+
     data = {}
     for m in masses:
-        ds = find_dataset(cat, "floating", m)
+        #ds = find_dataset(cat, "floating", m)
+        ds = find_dataset(cat, "core", m)
         if ds:
             d = _select(ds[0], m)
             data[m] = -d['y0']   # depth below detector (positive distance)
@@ -318,6 +334,7 @@ def density_overlay_panels(cat, masses, outdir):
                    color=MASS_COLOR[m], label=MASS_TEV[m])
     _finish(ax, r'Depth below detector [m]', legend=True)
     _save(fig, outdir, "density_profile_lin")
+    figs.append(fig), axes.append(ax)
 
     bins = np.logspace(np.log10(1), np.log10(4000), 34)
     fig, ax = _panel()
@@ -327,7 +344,9 @@ def density_overlay_panels(cat, masses, outdir):
     _finish(ax, r'Depth below detector [m] (log)', logx=True,
             legend=True, xsize=16)
     _save(fig, outdir, "density_profile_log")
+    figs.append(fig), axes.append(ax)
 
+    return figs,axes
 
 # ------------------------------------------------------------ emu_at_det
 def emu_panels(df, mass, outdir):
@@ -339,6 +358,8 @@ def emu_panels(df, mass, outdir):
     # generation, gold at the detector (after energy loss)
     gen_c, det_c = MASS_COLOR.get(mass, "#2ca02c"), "#DAA520"
 
+    figs,axes = [],[]
+
     fig, ax = _panel()
     d['e1'].hist(bins=50, range=xr, density=True, histtype="step",
                  color=gen_c, label='At generation')
@@ -346,6 +367,8 @@ def emu_panels(df, mass, outdir):
                          color=det_c, label='At detector')
     _finish(ax, r'Muon energy $E_{\mu}$ [GeV]', logy=True, legend=True)
     _save(fig, outdir, "emu_at_det_E")
+    figs.append(fig)
+    axes.append(ax)
 
     fig, ax = _panel()
     d['pt1_detector_acceptance'].hist(bins=50, range=xr, density=True,
@@ -356,6 +379,10 @@ def emu_panels(df, mass, outdir):
                                             label='With eloss')
     _finish(ax, r'Muon $p_{T}$ [GeV]', logy=True, legend=True)
     _save(fig, outdir, "emu_at_det_pT")
+    figs.append(fig)
+    axes.append(ax)
+
+    return figs,axes
 
 
 # ------------------------------------------------------ pT overlap (core vs floating)
@@ -365,6 +392,7 @@ TEV = {1000: "1TeV", 10000: "10TeV", 100000: "100TeV"}
 def pt_overlap_panel(cat, mass, outdir):
     """Overlay the muon pT-at-detector (with eloss) for the core and floating
     models at one mass -- the momentum-resolution comparison figure."""
+    figs,axes = [],[]
     xr = (0, 1.1 * mass / 2)
     fig, ax = _panel()
     n = 0
@@ -381,13 +409,16 @@ def pt_overlap_panel(cat, mass, outdir):
         ax.set_title(rf'$m_\chi$ = {TEV[int(mass)]}')
         _finish(ax, r'Muon $p_{T}$ at detector [GeV]', logy=True, legend=True)
         _save(fig, outdir, f"pt_overlap_{TEV[int(mass)]}")
+        figs.append(fig), axes.append(ax)
 
+    return figs,axes
 
 def pt_overlay_all(cat, masses, outdir):
     """Single consolidated momentum-resolution figure: the muon pT-at-detector
     (with eloss) for every DM mass, colour-coded by mass, with the core model
     as a solid line and the floating model as a dashed line. Log-x so the very
     different pT scales of the light and heavy masses all fit on one axis."""
+    figs,axes = [],[]
     masses = [m for m in masses if find_dataset(cat, "core", m)
               or find_dataset(cat, "floating", m)]
     if not masses:
@@ -415,6 +446,9 @@ def pt_overlay_all(cat, masses, outdir):
     ax.legend(handles=mass_h + style_h, ncol=2, fontsize=13)
     _finish(ax, r'Muon $p_{T}$ at detector [GeV]', logy=True, logx=True)
     _save(fig, outdir, "pt_overlay_all")
+    figs.append(fig), axes.append(ax)
+
+    return figs,axes
 
 
 # ------------------------------------------------------ muon transit time
@@ -442,6 +476,7 @@ def transit_time_overlay_panel(cat, masses, outdir, tmax=110.0):
     the shape is set by the crossing geometry -- vertical (core) tracks cut off
     at the detector diameter, inclined (floating) tracks tail out toward the
     full length."""
+    figs,axes = [],[]
     style = {"core": "-", "floating": "--"}
     bins = np.linspace(0, tmax, 60)
     fig, ax = _panel()
@@ -470,6 +505,9 @@ def transit_time_overlay_panel(cat, masses, outdir, tmax=110.0):
     ax.legend(handles=mass_h + style_h, ncol=2, fontsize=13, loc="upper center")
     _finish(ax, r'Muon transit time [ns]')
     _save(fig, outdir, "muon_transit_time_vs_mass")
+    figs.append(fig), axes.append(ax)
+
+    return figs,axes
 
 
 def main():

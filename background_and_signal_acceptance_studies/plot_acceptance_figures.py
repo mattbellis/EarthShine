@@ -143,6 +143,8 @@ def plot_model(dfacc, model, plotdir):
     fig.savefig(out)
     print(f"  -> {out}")
 
+    return fig,ax
+
 
 def main():
     ap = argparse.ArgumentParser()
