@@ -78,7 +78,7 @@ def rock_volume_m3(vp):
     return (vp["depth_max"] - vp["depth_min"]) * np.pi * vp["disk_radius"] ** 2
 
 
-def get_df_of_acceptances(files, energycut=(10, 100, 1000), verbose=True):
+def get_df_of_acceptances(files, energycut=(10, 100, 1000), verbose=True, include_ID=False):
     if isinstance(files, (str, Path)):
         files = [files]
     energycut = list(energycut)
@@ -105,12 +105,13 @@ def get_df_of_acceptances(files, energycut=(10, 100, 1000), verbose=True):
     dfacc = per_file.groupby(keys, as_index=False)[sums].sum()
     for ecut in energycut:
         dfacc[f"frac_ecut{ecut}"] = dfacc[f"count_ecut{ecut}"] / dfacc["n_generated"]
-        dfacc[f"frac_hit_id_ecut{ecut}"] = (
-            dfacc[f"count_hit_id_ecut{ecut}"] / dfacc["n_generated"])
+        if include_ID:
+            dfacc[f"frac_hit_id_ecut{ecut}"] = (
+                dfacc[f"count_hit_id_ecut{ecut}"] / dfacc["n_generated"])
     return dfacc.sort_values(["volume_m3", "M_DM"]).reset_index(drop=True)
 
 
-def plot_model(dfacc, model, plotdir):
+def plot_model(dfacc, model, plotdir, include_ID=False):
     # data-driven y-range with ~2 decades of headroom above the highest
     # point so the (log-y) legend sits in clear space instead of overlapping
     frac_cols = [c for c in dfacc.columns if c.startswith("frac_")]
@@ -121,7 +122,9 @@ def plot_model(dfacc, model, plotdir):
     ax = plt.gca()
     styles = [("frac_ecut10", "b", "o", r"$E_{\mu}$ > 10 GeV"),
               ("frac_ecut100", "r", "^", r"$E_{\mu}$ > 100 GeV"),
-              ("frac_ecut1000", "g", "v", r"$E_{\mu}$ > 1000 GeV"),
+              ("frac_ecut1000", "g", "v", r"$E_{\mu}$ > 1000 GeV")]
+    if include_ID:
+        styles += [
               ("frac_hit_id_ecut10", "b", "s", r"$E_{\mu}$ > 10 GeV (ID)"),
               ("frac_hit_id_ecut100", "r", "P", r"$E_{\mu}$ > 100 GeV (ID)"),
               ("frac_hit_id_ecut1000", "g", ">", r"$E_{\mu}$ > 1000 GeV (ID)")]
@@ -138,7 +141,12 @@ def plot_model(dfacc, model, plotdir):
     ax.legend(loc="upper center", ncol=2, columnspacing=1.0,
               handletextpad=0.3, framealpha=0.9, fontsize=11)
     plt.tight_layout()
-    out = Path(plotdir) / f"acc_dm_model_{model}.pdf"
+
+    tag_ID = ""
+    if include_ID:
+        tag_ID = "_include_ID"
+
+    out = Path(plotdir) / f"acc_dm_model_{model}{tag_ID}.pdf"
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out)
     print(f"  -> {out}")
@@ -162,7 +170,11 @@ def main():
         files = list(sm["path"])
         dfacc = get_df_of_acceptances(files, energycut=[10, 100, 1000])
         plot_model(dfacc, model, args.plotdir)
-        dfacc.to_parquet(Path(args.plotdir) / f"acc_dm_model_{model}.parquet")
+
+        tag_ID = ""
+        if include_ID:
+            tag_ID = "_include_ID"
+        dfacc.to_parquet(Path(args.plotdir) / f"acc_dm_model_{model}{tag_ID}.parquet")
 
 
 if __name__ == "__main__":

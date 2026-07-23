@@ -2,8 +2,13 @@
 #NEVENTS=1_000_000
 #NTRIALS=2000
 
+# Floating
 NEVENTS=1_000_000
-NTRIALS=500
+NTRIALS=2000
+
+# Core
+#NEVENTS=1_000_000
+#NTRIALS=500
 
 for model in "floating"; do
 #for model in "core"; do

@@ -310,7 +310,7 @@ MASS_COLOR = {100.0: "#9467bd", 1000.0: "#1f77b4", 10000.0: "#2ca02c",
               100000.0: "#d62728"}
 
 
-def density_overlay_panels(cat, masses, outdir):
+def density_overlay_panels(cat, masses, outdir, dm_model='floating'):
     """Consolidated decay-depth figure: all DM masses overlaid on a single
     linear panel and a single log panel (colour encodes the DM mass)."""
 
@@ -319,7 +319,7 @@ def density_overlay_panels(cat, masses, outdir):
     data = {}
     for m in masses:
         #ds = find_dataset(cat, "floating", m)
-        ds = find_dataset(cat, "core", m)
+        ds = find_dataset(cat, dm_model, m)
         if ds:
             d = _select(ds[0], m)
             data[m] = -d['y0']   # depth below detector (positive distance)
@@ -333,7 +333,7 @@ def density_overlay_panels(cat, masses, outdir):
         depth.hist(bins=100, range=(0, yrange), density=True, histtype="step",
                    color=MASS_COLOR[m], label=MASS_TEV[m])
     _finish(ax, r'Depth below detector [m]', legend=True)
-    _save(fig, outdir, "density_profile_lin")
+    _save(fig, outdir, f"density_profile_lin_{dm_model}")
     figs.append(fig), axes.append(ax)
 
     bins = np.logspace(np.log10(1), np.log10(4000), 34)
@@ -343,7 +343,7 @@ def density_overlay_panels(cat, masses, outdir):
                    color=MASS_COLOR[m], label=MASS_TEV[m])
     _finish(ax, r'Depth below detector [m] (log)', logx=True,
             legend=True, xsize=16)
-    _save(fig, outdir, "density_profile_log")
+    _save(fig, outdir, f"density_profile_log_{dm_model}")
     figs.append(fig), axes.append(ax)
 
     return figs,axes
