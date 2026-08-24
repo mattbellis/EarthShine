@@ -121,6 +121,7 @@ def plot_acceptances(
     xlim=None,
     outdir=".",
     save=True,
+    user_file_tag="",
     mass_rtol=1e-3,
 ):
     """
@@ -234,7 +235,7 @@ def plot_acceptances(
         if save:
             stem = (
                 f"acc_dm_model_{tag}_depth={_path_token(dmin)}-{_path_token(dmax)}"
-                f"_diskR={_path_token(radius)}"
+                f"_diskR={_path_token(radius)}{user_file_tag}"
             )
             png_path = outdir / f"{stem}.png"
             fig.savefig(png_path)
@@ -261,9 +262,12 @@ def make_acceptance_plots(
     depth_min=None,
     depth_max=None,
     disk_radius=None,
+    inner_detector_radius=None,
+    inner_detector_half_len=None,
     masses=None,
     energycut=(10, 100, 1000),
     files=None,
+    user_file_tag="",
     outdir=".",
     verbose=True,
     **plot_kwargs,
@@ -291,6 +295,11 @@ def make_acceptance_plots(
             filters["depth_max"] = depth_max
         if disk_radius is not None:
             filters["disk_radius"] = disk_radius
+        if inner_detector_radius is not None:
+            filters["inner_detector_radius"] = inner_detector_radius
+        if inner_detector_half_len is not None:
+            filters["inner_detector_half_len"] = inner_detector_half_len
+
 
         files = list(
             eio.summary(data_dir, stage="combined", full_paths=True, **filters)["path"]
@@ -304,7 +313,7 @@ def make_acceptance_plots(
 
     dfacc = get_df_of_acceptances(files, energycut=energycut, verbose=verbose)
     figs = plot_acceptances(
-        dfacc, dm_model, energycut=energycut, masses=masses, outdir=outdir,
+        dfacc, dm_model, energycut=energycut, masses=masses, outdir=outdir, user_file_tag=user_file_tag,
         **plot_kwargs,
     )
     return dfacc, figs

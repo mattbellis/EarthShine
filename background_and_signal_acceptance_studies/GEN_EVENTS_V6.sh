@@ -4,16 +4,17 @@
 
 # Floating
 NEVENTS=1_000_000
-NTRIALS=2000
+NTRIALS=1000
 
 # Core
 #NEVENTS=1_000_000
 #NTRIALS=500
 
-for model in "floating"; do
-#for model in "core"; do
+#for model in "floating"; do
+for model in "core"; do
 
-for mass in 100 1000 10000 100000; do
+#for mass in 100 1000 10000 100000; do
+for mass in 10000; do
     echo $mass
     echo $model
     echo $NEVENTS

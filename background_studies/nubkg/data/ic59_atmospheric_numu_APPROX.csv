@@ -1,0 +1,24 @@
+# IC-59 unfolded atmospheric nu_mu + nubar_mu spectrum
+#
+# !!!! PLACEHOLDER -- REPLACE WITH YOUR OWN DIGITISATION !!!!
+# These values were read BY EYE off the standard E^2 Phi figure and are
+# accurate to maybe 30%.  They exist so the code runs and so the loader has
+# something to be unit-tested against.  Substitute the points you scanned.
+#
+# Source figure / paper:
+#   https://icecube.wisc.edu/news/research/2014/09/an-improved-measurement-of-atmospheric-neutrino-flux-in-icecube/
+#   Aartsen et al., Eur. Phys. J. C 75, 116 (2015), arXiv:1409.4535
+# Northern (up-going) sky, zenith averaged.  Includes conventional + prompt +
+# whatever astrophysical component is present at the top end.
+#
+# columns: E_nu[GeV], E^2*Phi [GeV cm^-2 s^-1 sr^-1], 1-sigma on E^2*Phi
+3.5e2,2.6e-4,0.9e-4
+6.3e2,9.8e-5,2.6e-5
+1.0e3,3.1e-5,0.8e-5
+2.5e3,1.0e-5,0.2e-5
+5.6e3,3.7e-6,0.7e-6
+1.1e4,1.05e-6,0.20e-6
+2.2e4,2.8e-7,0.6e-7
+5.0e4,7.5e-8,2.0e-8
+2.2e5,1.9e-8,1.0e-8
+5.6e5,3.8e-9,2.5e-9
