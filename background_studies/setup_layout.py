@@ -33,6 +33,7 @@ from pathlib import Path
 MODULES = [
     "__init__.py",
     "conftest.py",
+    "cosmic_muons.py",
     "muon_transport.py",
     "nu_background.py",
     "nu_flux.py",
@@ -41,39 +42,89 @@ MODULES = [
     "test_nu_background.py",
 ]
 
-STAY_PUT = ["01_validation.ipynb", "02_results.ipynb", "README.md", "pytest.ini"]
+STAY_PUT = ["01_validation.ipynb", "02_results.ipynb", "03_allsky.ipynb",
+            "README.md", "pytest.ini", "convert_flux_curve.py", "convert_xsec.py"]
 
-DATA_NAME = "ic59_atmospheric_numu_APPROX.csv"
+# other data files: moved into nubkg/data/ (or data/raw/) if they arrive flat
+EXTRA_DATA = ["xsec_cc_digitised.csv", "xsec_icecube_measured.csv"]
+RAW_DATA = ["flux_curve.csv", "pdg_cross_sections.csv", "ice_cube_cross_section.csv"]
+
+DATA_NAME = "atmospheric_numu_digitised.csv"
 
 DATA_CONTENT = """\
-# IC-59 unfolded atmospheric nu_mu + nubar_mu spectrum
-#
-# !!!! PLACEHOLDER -- REPLACE WITH YOUR OWN DIGITISATION !!!!
-# These values were read BY EYE off the standard E^2 Phi figure and are
-# accurate to maybe 30%.  They exist so the code runs and so the loader has
-# something to be unit-tested against.  Substitute the points you scanned.
-#
-# Source figure / paper:
-#   https://icecube.wisc.edu/news/research/2014/09/an-improved-measurement-of-atmospheric-neutrino-flux-in-icecube/
-#   Aartsen et al., Eur. Phys. J. C 75, 116 (2015), arXiv:1409.4535
-# Northern (up-going) sky, zenith averaged.  Includes conventional + prompt +
-# whatever astrophysical component is present at the top end.
-#
-# NOTE: the lowest point here is ~350 GeV, but the background rate is dominated
-# by E_nu ~ 100-300 GeV.  Extend this table downward (Frejus points from the
-# same figure, or Honda/MCEq) before quoting an absolute number.  See README.
-#
-# columns: E_nu[GeV], E^2*Phi [GeV cm^-2 s^-1 sr^-1], 1-sigma on E^2*Phi
-3.5e2,2.6e-4,0.9e-4
-6.3e2,9.8e-5,2.6e-5
-1.0e3,3.1e-5,0.8e-5
-2.5e3,1.0e-5,0.2e-5
-5.6e3,3.7e-6,0.7e-6
-1.1e4,1.05e-6,0.20e-6
-2.2e4,2.8e-7,0.6e-7
-5.0e4,7.5e-8,2.0e-8
-2.2e5,1.9e-8,1.0e-8
-5.6e5,3.8e-9,2.5e-9
+# Frejus nu_mu model (0.12-11 GeV) + Honda H3a+ERS (125 GeV-1 PeV), digitised by MB
+# converted from flux_curve.csv by convert_flux_curve.py
+# y_raw * 1e-9 = E^2*Phi  [GeV cm^-2 s^-1 sr^-1]
+# uncertainty attached as a flat 25%
+# columns: E_nu[GeV], E^2*Phi, sigma(E^2*Phi)
+1.162030e-01,2.818383e-02,7.045957e-03
+1.569106e-01,3.548134e-02,8.870335e-03
+2.462092e-01,4.136820e-02,1.034205e-02
+3.767792e-01,4.216965e-02,1.054241e-02
+5.484417e-01,4.058199e-02,1.014550e-02
+7.785820e-01,3.686945e-02,9.217363e-03
+1.162030e+00,3.102178e-02,7.755444e-03
+1.569106e+00,2.610157e-02,6.525393e-03
+2.118785e+00,2.326305e-02,5.815763e-03
+2.790308e+00,1.847850e-02,4.619624e-03
+3.674662e+00,1.525223e-02,3.813057e-03
+4.489251e+00,1.258925e-02,3.147314e-03
+5.912064e+00,1.039122e-02,2.597806e-03
+7.593374e+00,8.413951e-03,2.103488e-03
+9.276653e+00,6.683439e-03,1.670860e-03
+1.133308e+01,5.623413e-03,1.405853e-03
+1.000000e+02,5.623413e-04,1.405853e-04
+1.252639e+02,4.553374e-04,1.138344e-04
+1.455605e+02,3.686945e-04,9.217363e-05
+1.869559e+02,3.043220e-04,7.608050e-05
+2.283998e+02,2.371374e-04,5.928434e-05
+2.933535e+02,1.812731e-04,4.531827e-05
+3.674662e+02,1.412538e-04,3.531344e-05
+4.603027e+02,1.100694e-04,2.751735e-05
+5.765933e+02,8.413951e-05,2.103488e-05
+7.044109e+02,6.683439e-05,1.670860e-05
+8.823729e+02,5.207948e-05,1.301987e-05
+1.051330e+03,3.981072e-05,9.952679e-06
+1.316938e+03,3.043220e-05,7.608050e-06
+1.649648e+03,2.417315e-05,6.043289e-06
+1.823348e+03,2.073322e-05,5.183304e-06
+2.118785e+03,1.711328e-05,4.278321e-06
+2.588472e+03,1.359356e-05,3.398391e-06
+3.084114e+03,1.059254e-05,2.648134e-06
+3.583834e+03,8.254042e-06,2.063510e-06
+4.270068e+03,6.431812e-06,1.607953e-06
+4.961948e+03,5.207948e-06,1.301987e-06
+6.061899e+03,3.981072e-06,9.952679e-07
+7.222635e+03,3.043220e-06,7.608050e-07
+8.605629e+03,2.282093e-06,5.705232e-07
+1.025344e+04,1.778279e-06,4.445699e-07
+1.191481e+04,1.385692e-06,3.464230e-07
+1.492496e+04,1.079775e-06,2.699438e-07
+1.608873e+04,8.576959e-07,2.144240e-07
+1.916941e+04,6.812921e-07,1.703230e-07
+2.227543e+04,5.516539e-07,1.379135e-07
+2.588472e+04,4.298662e-07,1.074666e-07
+3.007883e+04,3.414549e-07,8.536372e-08
+3.408856e+04,2.610157e-07,6.525393e-08
+4.270068e+04,1.995262e-07,4.988156e-08
+4.961948e+04,1.496236e-07,3.740589e-08
+6.215531e+04,1.000000e-07,2.500000e-08
+7.593374e+04,6.812921e-08,1.703230e-08
+9.511760e+04,5.011872e-08,1.252968e-08
+1.105295e+05,3.686945e-08,9.217363e-09
+1.350314e+05,2.464147e-08,6.160368e-09
+1.691457e+05,1.711328e-08,4.278321e-09
+1.965524e+05,1.234999e-08,3.087498e-09
+2.341883e+05,9.261187e-09,2.315297e-09
+2.721339e+05,7.079458e-09,1.769864e-09
+3.162278e+05,5.516539e-09,1.379135e-09
+3.674662e+05,4.216965e-09,1.054241e-09
+4.270068e+05,3.043220e-09,7.608050e-10
+5.216645e+05,2.113489e-09,5.283723e-10
+6.061899e+05,1.525223e-09,3.813057e-10
+7.044109e+05,1.165914e-09,2.914786e-10
+7.983143e+05,8.912509e-10,2.228127e-10
+9.511760e+05,6.556418e-10,1.639105e-10
 """
 
 
@@ -119,6 +170,19 @@ def main() -> int:
     if missing:
         print(f"MISSING           : {missing}   <-- re-download these")
     print(f"{DATA_NAME}: {data_status}")
+
+    (data / "raw").mkdir(exist_ok=True)
+    for names, dest in ((EXTRA_DATA, data), (RAW_DATA, data / "raw")):
+        for name in names:
+            src, dst = here / name, dest / name
+            if dst.exists():
+                continue
+            if src.exists():
+                shutil.move(str(src), str(dst))
+                print(f"{name}: moved into {dst.parent.relative_to(here)}/")
+            else:
+                print(f"{name}: MISSING" + ("  <-- the digitised cross section; "
+                      "run convert_xsec.py or re-download" if name == EXTRA_DATA[0] else ""))
 
     for name in STAY_PUT:
         if not (here / name).exists():

@@ -88,10 +88,49 @@ class ChirkinAtmospheric:
 
     A = 0.646, gamma = 2.684 (Chirkin, hep-ph/0407078, Table 2).
 
-    Validity: fitted over 600 GeV - 60 TeV.  Below ~100 GeV it omits nu_mu from
-    muon decay and the primary-spectrum fit is extrapolating; treat as +-30%
-    there.  No oscillations (a <10% effect above 30 GeV over an Earth
-    diameter).  No prompt/charm component (negligible below ~50 TeV).
+    WHAT THIS IS, AND WHAT IT IS NOT
+    --------------------------------
+    CORSIKA does NOT use this formula.  The direction is the other way round:
+    CORSIKA is a particle-by-particle air-shower Monte Carlo, Chirkin *ran* it
+    (v6.030, QGSJET, Hoerandel poly-gonato primaries) and then fitted this
+    compact analytic form to the resulting neutrino spectra.  The functional
+    form itself is Volkova's (Sov. J. Nucl. Phys. 31, 784 (1980)) -- analytic
+    cascade theory, with the two terms being pion and kaon parents and the
+    denominators encoding the competition between meson decay and interaction.
+    Only the normalisation A and the spectral index gamma were fitted.
+
+    So this class is a *summary of CORSIKA output*, not an input to CORSIKA,
+    and not an independent calculation of its own.
+
+    VALIDITY
+    --------
+    `VALID_RANGE` is the energy band Chirkin actually fitted: 600 GeV - 60 TeV.
+    Outside it the formula is extrapolating, and the two ends fail differently:
+
+    Below 600 GeV -- holds up well.  Benchmarked against an independent
+        Honda H3a+ERS calculation the ratio drifts by only ~20% down to 10 GeV.
+        The form omits nu_mu from muon decay, which matters below ~10 GeV.
+
+    Above 60 TeV -- degrades, by ~60% out to 1 PeV, and for a structural
+        reason: the form is a pure power law modified only by the meson
+        critical energies and contains NO cosmic-ray knee.  The fit range never
+        reached primaries near the knee (~4 PeV), so nothing constrained it.
+        Above E_nu ~ 100 TeV the true spectrum steepens through the knee
+        (measured local slope -4.0 vs this formula's -3.66) while this formula
+        keeps its asymptotic -(gamma+1).  It also has no prompt/charm term,
+        which partially compensates in the other direction above ~300 TeV.
+
+    The asymptotic slope does run correctly from -gamma to -(gamma+1), so the
+    form is structurally sound even where its parameters are not constrained;
+    see `test_chirkin_asymptotic_slope_is_structurally_correct`.
+
+    IMPACT ON RESULTS: in this package the Chirkin model is used only as the
+    zenith-shape donor for a tabulated flux and as a comparison curve.  The
+    shape affects the integrated rate at the ~1% level, so these extrapolation
+    errors do not propagate into the background numbers.  They do matter if you
+    plot the curve outside VALID_RANGE without saying so.
+
+    Also: no oscillations (a <10% effect above 30 GeV over an Earth diameter).
     """
 
     norm: float = 2.85e-2
@@ -99,6 +138,15 @@ class ChirkinAtmospheric:
     gamma: float = 2.684
     nu_fraction: float = 0.635
     label: str = "Chirkin/Volkova conventional atmospheric (hep-ph/0407078)"
+
+    #: energy band over which A and gamma were actually fitted, GeV
+    VALID_RANGE = (600.0, 6.0e4)
+
+    @classmethod
+    def in_valid_range(cls, e_nu) -> np.ndarray:
+        """Boolean mask: is the formula interpolating (True) or extrapolating?"""
+        e = np.asarray(e_nu, float)
+        return (e >= cls.VALID_RANGE[0]) & (e <= cls.VALID_RANGE[1])
 
     def __call__(self, e_nu, cos_zenith, species: Species = "nu") -> np.ndarray:
         e = np.asarray(e_nu, float)

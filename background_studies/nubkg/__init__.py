@@ -21,10 +21,14 @@ def data_path(name: str) -> str:
     return str(p)
 
 from .muon_transport import EnergyLoss, ROCK_LOSS, WATER_LOSS
-from .nu_xsec import CrossSection, Inelasticity, default_cc, sigma_uncertainty
+from .nu_xsec import (CrossSection, Inelasticity, default_cc, builtin_cc,
+                      load_cc_pair, set_default_xsec, get_default_xsec,
+                      sigma_uncertainty, DEFAULT_XSEC_FILE)
 from .nu_flux import (ChirkinAtmospheric, TabulatedFlux, AstrophysicalPowerLaw,
                       SumFlux, cos_theta_star, earth_column_depth,
                       earth_transmission)
+from .cosmic_muons import (GaisserSurfaceMuons, muon_flux_at_depth,
+                           cosmic_muon_rate)
 from .nu_background import (Rock, STANDARD_ROCK, MOLASSE, Cylinder, CMS,
                             muon_production_spectrum, arriving_muon_spectrum,
                             integrated_muon_flux, detector_spectrum,

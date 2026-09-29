@@ -54,7 +54,9 @@ import numpy as np
 
 Species = Literal["nu", "nubar"]
 
-__all__ = ["CrossSection", "Inelasticity", "default_cc", "sigma_uncertainty"]
+__all__ = ["CrossSection", "Inelasticity", "default_cc", "builtin_cc",
+           "load_cc_pair", "set_default_xsec", "get_default_xsec",
+           "sigma_uncertainty", "DEFAULT_XSEC_FILE"]
 
 
 # ---------------------------------------------------------------------------
@@ -178,27 +180,102 @@ class CrossSection:
                 f"{prefix}_n_points": len(self.energy)}
 
 
-def default_cc(species: Species = "nu") -> CrossSection:
+def builtin_cc(species: Species = "nu") -> CrossSection:
+    """The original hand-built table, kept only for comparison.
+
+    SUPERSEDED.  It extrapolated upward from the 10 TeV anchor with E^0.363,
+    which is the *asymptotic* index (valid above ~1e7 GeV).  Between 10 TeV and
+    1 PeV the true curve is steeper, so this table is 2x too low at 100 TeV and
+    3x too low at 1 PeV.  Its nubar is also ~25% high at 10 TeV.
+    """
     e, s = DEFAULT_CC_NU if species == "nu" else DEFAULT_CC_NUBAR
-    lab = ("PDG world average (<350 GeV) + GQRS/CSMS anchor (>=1e4 GeV) "
-           f"[{species}]")
+    lab = f"built-in placeholder (SUPERSEDED) [{species}]"
     return CrossSection(e, s, label=lab)
 
 
-def sigma_uncertainty(e_nu) -> np.ndarray:
-    """Fractional 1-sigma uncertainty on sigma_CC.
+# ---------------------------------------------------------------------------
+# Table-driven default
+# ---------------------------------------------------------------------------
 
-    ~3% where directly measured (30-350 GeV), rising to ~15% in the
-    unmeasured bridge region, then ~10% at high energy where the NLO QCD
-    predictions agree with the IceCube measurement (arXiv:1711.08119) at that
-    level.  Deliberately conservative.
+#: file in nubkg/data/ used by default_cc().  Change it per-notebook with
+#: set_default_xsec("other_file.csv").
+DEFAULT_XSEC_FILE = "xsec_cc_digitised.csv"
+
+_DATA_DIR = Path(__file__).resolve().parent / "data"
+_current_file = DEFAULT_XSEC_FILE
+_cache: dict = {}
+
+
+def load_cc_pair(path, label=None) -> dict:
+    """Load a combined table  E_GeV, sigma_nu_cm2, sigma_nubar_cm2  into
+    {"nu": CrossSection, "nubar": CrossSection}.  Accepts a bare file name
+    (looked up in nubkg/data/) or a path."""
+    p = Path(path)
+    if not p.is_absolute() and not p.exists():
+        p = _DATA_DIR / p
+    key = (str(p.resolve()), p.stat().st_mtime)
+    if key not in _cache:
+        arr = np.genfromtxt(p, delimiter=",", comments="#")
+        lab = label or p.name
+        _cache[key] = {"nu": CrossSection(arr[:, 0], arr[:, 1], label=f"{lab} [nu]"),
+                       "nubar": CrossSection(arr[:, 0], arr[:, 2], label=f"{lab} [nubar]")}
+    return _cache[key]
+
+
+def set_default_xsec(name_or_path) -> None:
+    """Choose the cross-section table every calculation uses by default.
+
+    One line in a notebook's setup cell:
+        nb.set_default_xsec("xsec_cc_digitised.csv")
+    Pass "builtin" to fall back to the old hand-built table.
+    """
+    global _current_file
+    if name_or_path != "builtin":
+        load_cc_pair(name_or_path)        # fail now, not mid-calculation
+    _current_file = name_or_path
+
+
+def get_default_xsec() -> str:
+    return _current_file
+
+
+def default_cc(species: Species = "nu") -> CrossSection:
+    """CC cross section used whenever none is passed explicitly."""
+    if _current_file == "builtin":
+        return builtin_cc(species)
+    try:
+        return load_cc_pair(_current_file)[species]
+    except (OSError, FileNotFoundError):
+        import warnings
+        warnings.warn(f"cross-section table {_current_file!r} not found in "
+                      f"{_DATA_DIR}; falling back to the SUPERSEDED built-in "
+                      "table, which is 2-3x too low above 100 TeV.",
+                      stacklevel=2)
+        return builtin_cc(species)
+
+
+def sigma_uncertainty(e_nu) -> np.ndarray:
+    """Fractional 1-sigma uncertainty on sigma_CC.  These are choices, set to
+    match the provenance of the default table (xsec_cc_digitised.csv):
+
+      < 30 GeV       10%  QE/resonance/DIS transition; generator prediction
+      30 - 340 GeV    3%  directly measured world average (PDG)
+      340 - 600 GeV   8%  the PDG/CSMS junction; the two differ by -5.6% (nu)
+                          and +7.9% (nubar) at 350 GeV
+      600 GeV - 1 PeV 5%  CSMS SM calculation plus ~1% digitisation error
+      > 1 PeV        10%  beyond the digitised range (extrapolated)
+
+    Not the IceCube measurement's error: that measured 1.30 x SM with a +-~45%
+    total uncertainty over 6.3-980 TeV, which is a test of the SM rather than a
+    better determination of it.  Use xsec_icecube_measured.csv to apply the
+    measured scale as an explicit variation if wanted.
     """
     e = np.asarray(e_nu, float)
     frac = np.full_like(e, 0.05)
-    frac = np.where((e >= 30) & (e <= 350), 0.03, frac)
-    frac = np.where((e > 350) & (e < 1e4), 0.15, frac)
-    frac = np.where(e >= 1e4, 0.10, frac)
     frac = np.where(e < 30, 0.10, frac)
+    frac = np.where((e >= 30) & (e < 340), 0.03, frac)
+    frac = np.where((e >= 340) & (e < 600), 0.08, frac)
+    frac = np.where(e > 1e6, 0.10, frac)
     return frac
 
 

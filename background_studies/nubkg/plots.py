@@ -20,7 +20,7 @@ __all__ = [
     "plot_flux", "plot_flux_e2", "plot_cross_sections", "plot_inelasticity",
     "plot_muon_range", "plot_rock_yield", "plot_arriving_spectrum",
     "plot_zenith_dependence", "plot_integrand_decomposition",
-    "plot_threshold_scan", "plot_error_budget",
+    "plot_threshold_scan", "plot_error_budget", "mark_validity",
 ]
 
 _KW = dict(lw=1.6)
@@ -43,6 +43,30 @@ def _finish(ax, xlabel, ylabel, title=None, logx=True, logy=True):
 # 1. Fluxes
 # ---------------------------------------------------------------------------
 
+
+def mark_validity(ax, model=None, label=True):
+    """Shade the energy band over which a parameterisation was actually fitted.
+
+    Anything outside the shaded band is extrapolation.  Use on every figure
+    that plots an analytic flux model beyond its fit range, so a reader can see
+    which part of the curve is constrained.
+    """
+    from .nu_flux import ChirkinAtmospheric
+    model = model or ChirkinAtmospheric
+    lo, hi = getattr(model, "VALID_RANGE", (None, None))
+    if lo is None:
+        return ax
+    ax.axvspan(lo, hi, color="0.5", alpha=0.10, lw=0, zorder=0)
+    if label:
+        ax.axvline(lo, color="0.4", ls="--", lw=0.8, zorder=0)
+        ax.axvline(hi, color="0.4", ls="--", lw=0.8, zorder=0)
+        # axes-fraction y so the label cannot collide with the x-axis label
+        ax.text(np.sqrt(lo * hi), 0.035, "fit range", ha="center", va="bottom",
+                fontsize=6.5, color="0.35",
+                transform=ax.get_xaxis_transform())
+    return ax
+
+
 def plot_flux(fluxes, e_nu=None, cos_zenith=-0.5, ax=None, species=("nu", "nubar")):
     """dPhi/dE vs E_nu for one or more flux models."""
     e_nu = np.geomspace(10, 1e6, 300) if e_nu is None else e_nu
@@ -53,6 +77,7 @@ def plot_flux(fluxes, e_nu=None, cos_zenith=-0.5, ax=None, species=("nu", "nubar
     _finish(ax, r"$E_\nu$ [GeV]",
             r"$d\Phi/dE_\nu$ [GeV$^{-1}$cm$^{-2}$s$^{-1}$sr$^{-1}$]",
             f"muon neutrino flux, cos(zenith) = {cos_zenith}")
+    mark_validity(ax)
     ax.legend(fontsize=8)
     return ax
 
@@ -74,6 +99,7 @@ def plot_flux_e2(fluxes, e_nu=None, cos_zenith=-0.5, ax=None,
     _finish(ax, r"$E_\nu$ [GeV]",
             r"$E_\nu^2\,\Phi_\nu$ [GeV cm$^{-2}$s$^{-1}$sr$^{-1}$]",
             f"cos(zenith) = {cos_zenith}")
+    mark_validity(ax)
     ax.legend(fontsize=8)
     return ax
 
